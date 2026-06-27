@@ -45,6 +45,30 @@ const OVER_BUDGET_MSG =
   "You've reached your AI coaching limit for this year. Your progress is " +
   "saved; the limit lifts when your access renews.";
 
+/** Read-only summary of a user's allowance, for display in the UI. */
+export interface UsageSummary {
+  spentUsd: number;
+  budgetUsd: number;
+  percentUsed: number; // 0–100, rounded
+  daysLeft: number; // whole days until access ends
+  expired: boolean;
+}
+
+export async function getUsageSummary(userId: string): Promise<UsageSummary> {
+  const client = await clerkClient();
+  const user = await client.users.getUser(userId);
+  const spentUsd = readSpent(user.privateMetadata);
+  const endsAt = user.createdAt + ACCESS_DURATION_DAYS * DAY_MS;
+  const now = Date.now();
+  return {
+    spentUsd: round6(spentUsd),
+    budgetUsd: ANNUAL_BUDGET_USD,
+    percentUsed: Math.min(100, Math.round((spentUsd / ANNUAL_BUDGET_USD) * 100)),
+    daysLeft: Math.max(0, Math.ceil((endsAt - now) / DAY_MS)),
+    expired: now > endsAt,
+  };
+}
+
 export interface AccessGate {
   ok: boolean;
   status: number; // HTTP status to return when !ok

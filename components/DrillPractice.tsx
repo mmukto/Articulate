@@ -120,6 +120,8 @@ function WritePractice({
       const fb = data.feedback as Feedback;
       setFeedback(fb);
       record(moduleSlug, drill.id, fb.overall);
+      // Nudge the allowance indicator to refresh now that spend was recorded.
+      window.dispatchEvent(new Event("articulate:usage"));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to get feedback.");
     } finally {

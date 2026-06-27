@@ -9,6 +9,7 @@ import {
   UserButton,
 } from "@/components/auth";
 import { CLERK_ENABLED } from "@/lib/clerk-config";
+import AllowanceMeter from "@/components/AllowanceMeter";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -69,6 +70,7 @@ export default function RootLayout({
                   </SignUpButton>
                 </SignedOut>
                 <SignedIn>
+                  <AllowanceMeter />
                   <Link
                     href="/progress"
                     className="text-sm text-ink-mute transition-colors hover:text-accent"

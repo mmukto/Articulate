@@ -164,6 +164,8 @@ export function SpeakPractice({
         ? scores.reduce((a, b) => a + b, 0) / scores.length
         : 0;
       record(moduleSlug, drill.id, avg);
+      // Nudge the allowance indicator to refresh now that spend was recorded.
+      window.dispatchEvent(new Event("articulate:usage"));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to get feedback.");
     } finally {
