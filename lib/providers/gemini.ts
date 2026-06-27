@@ -94,6 +94,16 @@ export function isConfigured(): boolean {
   return Boolean(process.env.GEMINI_API_KEY);
 }
 
+// Extract a concise, user-safe reason from a Google SDK error so real
+// misconfigurations (invalid key, API not enabled, model not found, quota) are
+// visible instead of hidden behind a generic message. SDK errors look like:
+//   "[GoogleGenerativeAI Error]: ... [400 Bad Request] API key not valid..."
+function shortReason(msg: string): string {
+  const m = msg.match(/\[(\d{3})[^\]]*\]\s*(.+)/);
+  const text = m ? `${m[1]}: ${m[2]}` : msg;
+  return text.replace(/\s+/g, " ").trim().slice(0, 180);
+}
+
 export async function grade(system: string, user: string): Promise<unknown> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("GEMINI_API_KEY is not set.");
@@ -116,10 +126,13 @@ export async function grade(system: string, user: string): Promise<unknown> {
     text = result.response.text();
   } catch (err) {
     // text() throws if the response was blocked by safety filters.
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error("[gemini] generateContent failed:", detail);
+    if (/blocked|safety/i.test(detail)) {
+      throw new Error("The coaching model declined to respond to this input.");
+    }
     throw new Error(
-      err instanceof Error && /blocked|safety/i.test(err.message)
-        ? "The coaching model declined to respond to this input."
-        : "The AI coach failed to generate feedback. Please try again.",
+      `The AI coach failed to generate feedback (${shortReason(detail)}).`,
     );
   }
 
@@ -165,7 +178,8 @@ export async function gradeAudio(
     ]);
     text = result.response.text();
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "";
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[gemini] gradeAudio failed:", msg);
     if (/blocked|safety/i.test(msg)) {
       throw new Error("The coaching model declined to respond to this input.");
     }
@@ -174,7 +188,9 @@ export async function gradeAudio(
         "That audio format couldn't be processed. Try recording again, or use a different browser.",
       );
     }
-    throw new Error("The AI coach failed to process the recording. Please try again.");
+    throw new Error(
+      `The AI coach failed to process the recording (${shortReason(msg)}).`,
+    );
   }
 
   if (!text.trim()) {
