@@ -33,6 +33,14 @@ lives in `lib/course.ts`; the AI feedback contract is in `lib/types.ts`.
 - **Auth (Clerk) is optional.** With `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` unset, the app
   builds and runs in a local-only guest mode (see `lib/clerk-config.ts` and
   `components/auth.tsx`). With the keys set, full sign-in and cross-device progress work.
+- **AI coach.** Default model is `gemini-2.5-flash-lite` (override with `GEMINI_MODEL`);
+  the provider is switchable to Claude via `ANTHROPIC_API_KEY`. Gemini billing must be
+  enabled on the Google Cloud project (free tier is effectively unavailable).
+- **Per-user cost guardrails** (`lib/limits.ts`): each signed-in user gets one year of
+  access from sign-up and a hard **$2** spend cap, metered from real token usage and
+  stored in Clerk **`privateMetadata`** (server-only, tamper-proof). Enforced in the
+  feedback + speak routes. Tune with `USER_ANNUAL_BUDGET_USD` / `USER_ACCESS_DAYS`. If you
+  change model/provider, update the per-token price in `lib/limits.ts` so the cap stays accurate.
 
 ## Verifying changes
 

@@ -8,7 +8,14 @@ import { DIMENSIONS, DELIVERY_DIMENSIONS } from "../course";
 // Gemini provider (free tier). Structured output via responseSchema +
 // responseMimeType: "application/json", which returns JSON we parse.
 
-const MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
+
+// Token usage returned alongside results so callers can meter per-user spend.
+export interface ProviderResult {
+  data: unknown;
+  inputTokens: number;
+  outputTokens: number;
+}
 
 const RESPONSE_SCHEMA: Schema = {
   type: SchemaType.OBJECT,
@@ -104,7 +111,10 @@ function shortReason(msg: string): string {
   return text.replace(/\s+/g, " ").trim().slice(0, 180);
 }
 
-export async function grade(system: string, user: string): Promise<unknown> {
+export async function grade(
+  system: string,
+  user: string,
+): Promise<ProviderResult> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("GEMINI_API_KEY is not set.");
   if (!client) client = new GoogleGenerativeAI(key);
@@ -121,9 +131,11 @@ export async function grade(system: string, user: string): Promise<unknown> {
   });
 
   let text: string;
+  let usage: { promptTokenCount?: number; candidatesTokenCount?: number } | undefined;
   try {
     const result = await model.generateContent(user);
     text = result.response.text();
+    usage = result.response.usageMetadata;
   } catch (err) {
     // text() throws if the response was blocked by safety filters.
     const detail = err instanceof Error ? err.message : String(err);
@@ -140,11 +152,18 @@ export async function grade(system: string, user: string): Promise<unknown> {
     throw new Error("The AI coach returned no feedback. Please try again.");
   }
 
+  let data: unknown;
   try {
-    return JSON.parse(text);
+    data = JSON.parse(text);
   } catch {
     throw new Error("The AI coach returned malformed feedback. Please try again.");
   }
+
+  return {
+    data,
+    inputTokens: usage?.promptTokenCount ?? 0,
+    outputTokens: usage?.candidatesTokenCount ?? 0,
+  };
 }
 
 /** Grade a spoken recording: transcribe + coach delivery. Gemini is multimodal,
@@ -154,7 +173,7 @@ export async function gradeAudio(
   user: string,
   audioBase64: string,
   mimeType: string,
-): Promise<unknown> {
+): Promise<ProviderResult> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("GEMINI_API_KEY is not set.");
   if (!client) client = new GoogleGenerativeAI(key);
@@ -171,12 +190,14 @@ export async function gradeAudio(
   });
 
   let text: string;
+  let usage: { promptTokenCount?: number; candidatesTokenCount?: number } | undefined;
   try {
     const result = await model.generateContent([
       { text: user },
       { inlineData: { mimeType: mimeType || "audio/mp4", data: audioBase64 } },
     ]);
     text = result.response.text();
+    usage = result.response.usageMetadata;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[gemini] gradeAudio failed:", msg);
@@ -197,9 +218,16 @@ export async function gradeAudio(
     throw new Error("The AI coach returned no feedback. Please try again.");
   }
 
+  let data: unknown;
   try {
-    return JSON.parse(text);
+    data = JSON.parse(text);
   } catch {
     throw new Error("The AI coach returned malformed feedback. Please try again.");
   }
+
+  return {
+    data,
+    inputTokens: usage?.promptTokenCount ?? 0,
+    outputTokens: usage?.candidatesTokenCount ?? 0,
+  };
 }

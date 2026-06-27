@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { DIMENSIONS } from "../course";
+import type { ProviderResult } from "./gemini";
 
 // Claude provider. Structured output via forced tool use: the model must call
 // `submit_feedback`, and we read its already-parsed `input`.
@@ -56,7 +57,10 @@ export function isConfigured(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY);
 }
 
-export async function grade(system: string, user: string): Promise<unknown> {
+export async function grade(
+  system: string,
+  user: string,
+): Promise<ProviderResult> {
   if (!client) client = new Anthropic();
 
   // `thinking` is omitted: claude-opus-4-8 permits omitting it, and a thinking
@@ -79,5 +83,9 @@ export async function grade(system: string, user: string): Promise<unknown> {
     throw new Error("No feedback was returned by the model. Please try again.");
   }
 
-  return toolUse.input;
+  return {
+    data: toolUse.input,
+    inputTokens: message.usage?.input_tokens ?? 0,
+    outputTokens: message.usage?.output_tokens ?? 0,
+  };
 }

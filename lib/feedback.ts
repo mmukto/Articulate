@@ -18,6 +18,12 @@ import type {
 
 export type ProviderName = "gemini" | "claude";
 
+/** Token usage from a grading call, used to meter per-user spend. */
+export interface Usage {
+  inputTokens: number;
+  outputTokens: number;
+}
+
 /**
  * Decide which AI backend to use. Order:
  *   1. ARTICULATE_PROVIDER, if it explicitly names one
@@ -41,7 +47,7 @@ export async function gradeResponse(
   module: Module,
   drill: Drill,
   response: string,
-): Promise<Feedback> {
+): Promise<{ feedback: Feedback; usage: Usage }> {
   const provider = activeProvider();
   if (!provider) throw new Error(NOT_CONFIGURED);
 
@@ -51,7 +57,10 @@ export async function gradeResponse(
       ? await gemini.grade(SYSTEM_PROMPT, user)
       : await claude.grade(SYSTEM_PROMPT, user);
 
-  return normalize(raw);
+  return {
+    feedback: normalize(raw.data),
+    usage: { inputTokens: raw.inputTokens, outputTokens: raw.outputTokens },
+  };
 }
 
 /** Spoken practice is audio-based and therefore Gemini-only. */
@@ -64,7 +73,7 @@ export async function gradeSpoken(
   drill: Drill,
   audioBase64: string,
   mimeType: string,
-): Promise<SpokenFeedback> {
+): Promise<{ feedback: SpokenFeedback; usage: Usage }> {
   if (!gemini.isConfigured()) {
     throw new Error(
       "Spoken practice isn't configured. Set GEMINI_API_KEY (free) on the server.",
@@ -76,7 +85,10 @@ export async function gradeSpoken(
     audioBase64,
     mimeType,
   );
-  return normalizeSpoken(raw);
+  return {
+    feedback: normalizeSpoken(raw.data),
+    usage: { inputTokens: raw.inputTokens, outputTokens: raw.outputTokens },
+  };
 }
 
 // ---- Normalization: defensive against any provider's quirks ----

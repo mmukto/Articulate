@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { getDrill } from "@/lib/course";
 import { gradeResponse } from "@/lib/feedback";
 import { CLERK_ENABLED } from "@/lib/clerk-config";
+import { checkAccess, recordSpend, estimateCostUsd, type AccessGate } from "@/lib/limits";
 
 // Feedback grading can take a few seconds with adaptive thinking — give it room.
 export const maxDuration = 60;
@@ -13,14 +14,16 @@ const MAX_RESPONSE_CHARS = 6000;
 export async function POST(req: NextRequest) {
   // When auth is enabled, require a signed-in user. With Clerk unconfigured the
   // app runs open, so skip the check.
+  let userId: string | null = null;
   if (CLERK_ENABLED) {
-    const { userId } = await auth();
-    if (!userId) {
+    const a = await auth();
+    if (!a.userId) {
       return NextResponse.json(
         { error: "Please sign in to get feedback." },
         { status: 401 },
       );
     }
+    userId = a.userId;
   }
 
   let body: unknown;
@@ -60,8 +63,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unknown drill." }, { status: 404 });
   }
 
+  // Enforce the per-user access window + annual spend cap before spending money.
+  let gate: AccessGate | null = null;
+  if (userId) {
+    gate = await checkAccess(userId);
+    if (!gate.ok) {
+      return NextResponse.json({ error: gate.message }, { status: gate.status });
+    }
+  }
+
   try {
-    const feedback = await gradeResponse(found.module, found.drill, response);
+    const { feedback, usage } = await gradeResponse(found.module, found.drill, response);
+    if (userId && gate) await recordSpend(userId, gate, estimateCostUsd(usage));
     return NextResponse.json({ feedback });
   } catch (err) {
     const message =
