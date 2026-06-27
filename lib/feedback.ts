@@ -1,8 +1,20 @@
-import { DIMENSIONS } from "./course";
-import { SYSTEM_PROMPT, buildUserPrompt } from "./prompt";
+import { DIMENSIONS, DELIVERY_DIMENSIONS } from "./course";
+import {
+  SYSTEM_PROMPT,
+  buildUserPrompt,
+  SPOKEN_SYSTEM_PROMPT,
+  buildSpokenPrompt,
+} from "./prompt";
 import * as claude from "./providers/claude";
 import * as gemini from "./providers/gemini";
-import type { DimensionKey, Feedback, Drill, Module } from "./types";
+import type {
+  DimensionKey,
+  DeliveryKey,
+  Feedback,
+  SpokenFeedback,
+  Drill,
+  Module,
+} from "./types";
 
 export type ProviderName = "gemini" | "claude";
 
@@ -42,6 +54,31 @@ export async function gradeResponse(
   return normalize(raw);
 }
 
+/** Spoken practice is audio-based and therefore Gemini-only. */
+export function speechEnabled(): boolean {
+  return gemini.isConfigured();
+}
+
+export async function gradeSpoken(
+  module: Module,
+  drill: Drill,
+  audioBase64: string,
+  mimeType: string,
+): Promise<SpokenFeedback> {
+  if (!gemini.isConfigured()) {
+    throw new Error(
+      "Spoken practice isn't configured. Set GEMINI_API_KEY (free) on the server.",
+    );
+  }
+  const raw = await gemini.gradeAudio(
+    SPOKEN_SYSTEM_PROMPT,
+    buildSpokenPrompt(module, drill),
+    audioBase64,
+    mimeType,
+  );
+  return normalizeSpoken(raw);
+}
+
 // ---- Normalization: defensive against any provider's quirks ----
 
 function clampScore(n: unknown): number {
@@ -77,5 +114,29 @@ function normalize(raw: any): Feedback {
     rewrite: String(raw?.rewrite ?? "").trim(),
     rewriteRationale: String(raw?.rewriteRationale ?? "").trim(),
     drill: String(raw?.drill ?? "").trim(),
+  };
+}
+
+function normalizeSpoken(raw: any): SpokenFeedback {
+  const validKeys = new Set<DeliveryKey>(DELIVERY_DIMENSIONS.map((d) => d.key));
+  const seen = new Set<DeliveryKey>();
+  const delivery = Array.isArray(raw?.delivery)
+    ? raw.delivery
+        .filter((d: any) => validKeys.has(d?.key) && !seen.has(d.key) && seen.add(d.key))
+        .map((d: any) => ({
+          key: d.key as DeliveryKey,
+          score: clampScore(d.score),
+          comment: String(d.comment ?? ""),
+        }))
+    : [];
+
+  return {
+    transcript: String(raw?.transcript ?? "").trim(),
+    headline: String(raw?.headline ?? "").trim(),
+    delivery,
+    fillerWords: toStringArray(raw?.fillerWords),
+    strengths: toStringArray(raw?.strengths),
+    improvements: toStringArray(raw?.improvements),
+    modelDelivery: String(raw?.modelDelivery ?? "").trim(),
   };
 }

@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getDrill } from "@/lib/course";
-import { gradeResponse } from "@/lib/feedback";
+import { gradeSpoken } from "@/lib/feedback";
 import { CLERK_ENABLED } from "@/lib/clerk-config";
 
-// Feedback grading can take a few seconds with adaptive thinking — give it room.
+// Audio coaching can take a little longer than text — give it room.
 export const maxDuration = 60;
 export const runtime = "nodejs";
 
-const MAX_RESPONSE_CHARS = 6000;
+// ~6.7MB of base64 ≈ ~5MB of audio (roughly 90s of compressed mono speech).
+const MAX_AUDIO_BASE64 = 6_700_000;
 
 export async function POST(req: NextRequest) {
   // When auth is enabled, require a signed-in user. With Clerk unconfigured the
@@ -30,10 +31,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const { moduleSlug, drillId, response } = (body ?? {}) as {
+  const { moduleSlug, drillId, audio, mimeType } = (body ?? {}) as {
     moduleSlug?: string;
     drillId?: string;
-    response?: string;
+    audio?: string;
+    mimeType?: string;
   };
 
   if (!moduleSlug || !drillId) {
@@ -42,16 +44,16 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  if (typeof response !== "string" || response.trim().length === 0) {
+  if (typeof audio !== "string" || audio.length === 0) {
     return NextResponse.json(
-      { error: "Write a response before requesting feedback." },
+      { error: "Record an answer before requesting feedback." },
       { status: 400 },
     );
   }
-  if (response.length > MAX_RESPONSE_CHARS) {
+  if (audio.length > MAX_AUDIO_BASE64) {
     return NextResponse.json(
-      { error: `Response is too long (max ${MAX_RESPONSE_CHARS} characters).` },
-      { status: 400 },
+      { error: "Recording is too long. Keep it under about 90 seconds." },
+      { status: 413 },
     );
   }
 
@@ -61,17 +63,18 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const feedback = await gradeResponse(found.module, found.drill, response);
+    const feedback = await gradeSpoken(
+      found.module,
+      found.drill,
+      audio,
+      typeof mimeType === "string" && mimeType ? mimeType : "audio/mp4",
+    );
     return NextResponse.json({ feedback });
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Failed to generate feedback.";
-    // Surface a clean message; log the detail server-side.
-    console.error("[feedback] grading failed:", err);
+    console.error("[speak] grading failed:", err);
     const isConfig = message.includes("isn't configured");
-    return NextResponse.json(
-      { error: message },
-      { status: isConfig ? 503 : 500 },
-    );
+    return NextResponse.json({ error: message }, { status: isConfig ? 503 : 500 });
   }
 }

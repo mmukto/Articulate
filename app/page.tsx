@@ -1,5 +1,13 @@
 import Link from "next/link";
+import { SignedIn, SignedOut, SignUpButton } from "@/components/auth";
 import { MODULES, DIMENSIONS } from "@/lib/course";
+import { CourseProgress } from "@/components/CourseProgress";
+import { ModuleProgressBadge } from "@/components/ModuleProgressBadge";
+
+// Keys must match drillKey() in lib/progress.ts: `${moduleSlug}/${drillId}`.
+const ALL_DRILL_KEYS = MODULES.flatMap((m) =>
+  m.drills.map((d) => `${m.slug}/${d.id}`),
+);
 
 export default function HomePage() {
   return (
@@ -31,7 +39,7 @@ export default function HomePage() {
             href="#modules"
             className="rounded-md border border-ink/15 px-5 py-2.5 text-sm font-medium text-ink-soft transition-colors hover:border-accent hover:text-accent"
           >
-            See all 8 modules
+            See all 10 modules
           </Link>
         </div>
       </section>
@@ -39,7 +47,7 @@ export default function HomePage() {
       {/* Rubric */}
       <section>
         <h2 className="font-serif text-2xl font-semibold tracking-tight">
-          You'll be graded on five things
+          You'll be graded on six things
         </h2>
         <p className="mt-2 max-w-2xl text-ink-soft">
           Every response you write gets a score on each dimension, plus specific notes.
@@ -66,9 +74,22 @@ export default function HomePage() {
           The curriculum
         </h2>
         <p className="mt-2 max-w-2xl text-ink-soft">
-          Eight modules, each with a short lesson, before/after examples, and two
+          Ten modules, each with a short lesson, before/after examples, and two
           AI-coached practice drills. Work through them in order or jump to a weak spot.
         </p>
+        <SignedIn>
+          <CourseProgress keys={ALL_DRILL_KEYS} />
+        </SignedIn>
+        <SignedOut>
+          <p className="mt-4 text-sm text-ink-mute">
+            <SignUpButton mode="modal">
+              <button className="font-medium text-accent hover:underline">
+                Create a free account
+              </button>
+            </SignUpButton>{" "}
+            to practice the drills, get AI feedback, and track your progress.
+          </p>
+        </SignedOut>
         <ol className="mt-6 space-y-3">
           {MODULES.map((m) => (
             <li key={m.slug}>
@@ -86,7 +107,10 @@ export default function HomePage() {
                   <span className="block text-sm text-ink-mute">{m.tagline}</span>
                 </span>
                 <span className="ml-auto hidden shrink-0 self-center text-sm text-ink-mute transition-colors group-hover:text-accent sm:block">
-                  {m.drills.length} drills →
+                  <ModuleProgressBadge
+                    moduleSlug={m.slug}
+                    drillIds={m.drills.map((d) => d.id)}
+                  />
                 </span>
               </Link>
             </li>
@@ -124,6 +148,60 @@ export default function HomePage() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* Evidence basis */}
+      <section>
+        <h2 className="font-serif text-2xl font-semibold tracking-tight">
+          Grounded in the evidence
+        </h2>
+        <p className="mt-2 max-w-2xl text-ink-soft">
+          The techniques here aren&apos;t style opinions — they track what
+          communication research and top management-communication programs actually
+          teach. Each module shows the basis under &ldquo;Why it works.&rdquo;
+        </p>
+        <ul className="mt-6 grid gap-3 sm:grid-cols-2">
+          {[
+            {
+              t: "Lead with the point",
+              b: "Primacy effect — readers recall and organize around what comes first.",
+            },
+            {
+              t: "Group into threes",
+              b: "Working memory holds ~3–4 chunks, so grouped support beats long lists.",
+            },
+            {
+              t: "Cut the words",
+              b: "Concision lowers cognitive load; at the top, less is more.",
+            },
+            {
+              t: "Be concrete",
+              b: "Specifics are recalled better than abstractions (concreteness effect).",
+            },
+            {
+              t: "Translate for the audience",
+              b: "The curse of knowledge is robust — write for what the reader knows.",
+            },
+            {
+              t: "Land the 'so what'",
+              b: "What → So What → Now What turns data into a decision.",
+            },
+          ].map((p) => (
+            <li
+              key={p.t}
+              className="rounded-lg border border-ink/10 bg-white/40 p-4"
+            >
+              <div className="font-medium">{p.t}</div>
+              <p className="mt-0.5 text-sm leading-relaxed text-ink-mute">{p.b}</p>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-4 text-xs leading-relaxed text-ink-mute">
+          Sources: MIT Sloan OpenCourseWare (Communication for Managers 15.280; Advanced
+          Communication for Leaders 15.281), Harvard Business Review and HBS Online on
+          concise and executive communication, and cognitive-science research on the
+          primacy effect, working-memory chunking, and the curse of knowledge.
+        </p>
       </section>
     </div>
   );

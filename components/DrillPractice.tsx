@@ -3,7 +3,13 @@
 import { useState } from "react";
 import type { Drill, Feedback } from "@/lib/types";
 import { DIMENSION_MAP } from "@/lib/course";
+import { useProgress } from "@/lib/progress";
 import { ScoreBar } from "./ScoreBar";
+import { SpeakButton } from "./SpeakButton";
+import { SpeakPractice } from "./SpeakPractice";
+import { PracticedBadge } from "./PracticedBadge";
+
+type Mode = "write" | "speak";
 
 function overallColor(score: number): string {
   if (score >= 80) return "text-emerald-700";
@@ -18,40 +24,7 @@ export function DrillPractice({
   moduleSlug: string;
   drill: Drill;
 }) {
-  const [response, setResponse] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<Feedback | null>(null);
-
-  const wordCount = response.trim() ? response.trim().split(/\s+/).length : 0;
-
-  async function submit() {
-    if (!response.trim() || loading) return;
-    setLoading(true);
-    setError(null);
-    setFeedback(null);
-    try {
-      const res = await fetch("/api/feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ moduleSlug, drillId: drill.id, response }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.error || "Something went wrong.");
-      }
-      setFeedback(data.feedback as Feedback);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to get feedback.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function reset() {
-    setFeedback(null);
-    setError(null);
-  }
+  const [mode, setMode] = useState<Mode>("write");
 
   return (
     <div className="rounded-xl border border-ink/10 bg-white/60 p-6">
@@ -59,6 +32,7 @@ export function DrillPractice({
         <h3 className="font-serif text-xl font-semibold tracking-tight">
           {drill.title}
         </h3>
+        <PracticedBadge moduleSlug={moduleSlug} drillId={drill.id} />
         <div className="ml-auto flex flex-wrap gap-1.5">
           {drill.focus.map((k) => (
             <span
@@ -89,34 +63,103 @@ export function DrillPractice({
         </ul>
       </details>
 
-      <div className="mt-4">
-        <textarea
-          value={response}
-          onChange={(e) => setResponse(e.target.value)}
-          placeholder={drill.placeholder || "Write your response here…"}
-          rows={6}
-          maxLength={6000}
-          className="w-full resize-y rounded-lg border border-ink/15 bg-white p-3 text-sm leading-relaxed shadow-sm outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
-        />
-        <div className="mt-2 flex items-center justify-between">
-          <span className="text-xs text-ink-mute">{wordCount} words</span>
-          <div className="flex gap-2">
-            {feedback ? (
-              <button
-                onClick={reset}
-                className="rounded-md border border-ink/15 px-4 py-2 text-sm font-medium text-ink-soft transition-colors hover:border-accent hover:text-accent"
-              >
-                Revise
-              </button>
-            ) : null}
+      {/* Mode toggle */}
+      <div className="mt-4 inline-flex rounded-lg border border-ink/15 bg-paper p-0.5 text-sm">
+        {(["write", "speak"] as Mode[]).map((m) => (
+          <button
+            key={m}
+            onClick={() => setMode(m)}
+            className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+              mode === m
+                ? "bg-accent text-white shadow-sm"
+                : "text-ink-soft hover:text-accent"
+            }`}
+          >
+            {m === "write" ? "✍️ Write" : "🎙 Speak"}
+          </button>
+        ))}
+      </div>
+
+      {mode === "write" ? (
+        <WritePractice moduleSlug={moduleSlug} drill={drill} />
+      ) : (
+        <SpeakPractice moduleSlug={moduleSlug} drill={drill} />
+      )}
+    </div>
+  );
+}
+
+function WritePractice({
+  moduleSlug,
+  drill,
+}: {
+  moduleSlug: string;
+  drill: Drill;
+}) {
+  const { record } = useProgress();
+  const [response, setResponse] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+
+  const wordCount = response.trim() ? response.trim().split(/\s+/).length : 0;
+
+  async function submit() {
+    if (!response.trim() || loading) return;
+    setLoading(true);
+    setError(null);
+    setFeedback(null);
+    try {
+      const res = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ moduleSlug, drillId: drill.id, response }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Something went wrong.");
+      const fb = data.feedback as Feedback;
+      setFeedback(fb);
+      record(moduleSlug, drill.id, fb.overall);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to get feedback.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function reset() {
+    setFeedback(null);
+    setError(null);
+  }
+
+  return (
+    <div className="mt-4">
+      <textarea
+        value={response}
+        onChange={(e) => setResponse(e.target.value)}
+        placeholder={drill.placeholder || "Write your response here…"}
+        rows={6}
+        maxLength={6000}
+        className="w-full resize-y rounded-lg border border-ink/15 bg-white p-3 text-sm leading-relaxed shadow-sm outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
+      />
+      <div className="mt-2 flex items-center justify-between">
+        <span className="text-xs text-ink-mute">{wordCount} words</span>
+        <div className="flex gap-2">
+          {feedback ? (
             <button
-              onClick={submit}
-              disabled={loading || !response.trim()}
-              className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+              onClick={reset}
+              className="rounded-md border border-ink/15 px-4 py-2 text-sm font-medium text-ink-soft transition-colors hover:border-accent hover:text-accent"
             >
-              {loading ? "Coaching…" : feedback ? "Re-score" : "Get feedback"}
+              Revise
             </button>
-          </div>
+          ) : null}
+          <button
+            onClick={submit}
+            disabled={loading || !response.trim()}
+            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+          >
+            {loading ? "Coaching…" : feedback ? "Re-score" : "Get feedback"}
+          </button>
         </div>
       </div>
 
@@ -206,9 +249,12 @@ function FeedbackPanel({ feedback }: { feedback: Feedback }) {
       {/* Rewrite */}
       {feedback.rewrite ? (
         <div>
-          <h4 className="text-sm font-semibold uppercase tracking-wide text-ink">
-            A stronger version
-          </h4>
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold uppercase tracking-wide text-ink">
+              A stronger version
+            </h4>
+            <SpeakButton text={feedback.rewrite} label="Hear it" />
+          </div>
           <blockquote className="mt-2 rounded-lg border-l-2 border-accent bg-paper p-4 font-serif text-[15px] leading-relaxed text-ink">
             {feedback.rewrite}
           </blockquote>

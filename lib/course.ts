@@ -1,4 +1,10 @@
-import type { Dimension, DimensionKey, Module } from "./types";
+import type {
+  Dimension,
+  DimensionKey,
+  DeliveryDimension,
+  DeliveryKey,
+  Module,
+} from "./types";
 
 export const DIMENSIONS: Dimension[] = [
   {
@@ -23,10 +29,16 @@ export const DIMENSIONS: Dimension[] = [
     description: "Concrete and specific rather than abstract, vague, or jargon-laden?",
   },
   {
+    key: "audience",
+    label: "Audience",
+    description:
+      "Written for this reader — translates jargon into their terms and leads with what they care about (their stake, the 'so what').",
+  },
+  {
     key: "impact",
     label: "Impact",
     description:
-      "Does it carry executive presence — confident, decisive, and audience-aware?",
+      "Executive presence — confident, decisive, and owns a clear recommendation.",
   },
 ];
 
@@ -38,7 +50,41 @@ export const DIMENSION_MAP: Record<DimensionKey, Dimension> = DIMENSIONS.reduce(
   {} as Record<DimensionKey, Dimension>,
 );
 
-export const MODULES: Module[] = [
+// Dimensions evaluated from a spoken recording (the "Speak" practice mode).
+export const DELIVERY_DIMENSIONS: DeliveryDimension[] = [
+  {
+    key: "pace",
+    label: "Pace",
+    description: "Steady and unhurried, with pauses that aid emphasis — not rushed or draggy.",
+  },
+  {
+    key: "fillers",
+    label: "Filler-free",
+    description: "Few 'um', 'uh', 'like', 'sort of', or false starts breaking the flow.",
+  },
+  {
+    key: "clarity",
+    label: "Clarity",
+    description: "Easy to follow spoken — leads with the point, well-organized, not rambling.",
+  },
+  {
+    key: "pronunciation",
+    label: "Enunciation",
+    description:
+      "Words clearly articulated and easy to understand (general intelligibility, not accent).",
+  },
+];
+
+export const DELIVERY_MAP: Record<DeliveryKey, DeliveryDimension> =
+  DELIVERY_DIMENSIONS.reduce(
+    (acc, d) => {
+      acc[d.key] = d;
+      return acc;
+    },
+    {} as Record<DeliveryKey, DeliveryDimension>,
+  );
+
+const RAW_MODULES: Module[] = [
   {
     slug: "lead-with-the-point",
     number: 1,
@@ -66,6 +112,8 @@ export const MODULES: Module[] = [
           body: "A common failure is fusing the request into a paragraph of background so the reader has to extract it. State the ask cleanly, then provide the context as support a reader can skim or skip.",
         },
       ],
+      evidence:
+        "Cognitive psychology's primacy effect: readers recall the opening and closing of a message best, and stating the main point first gives a mental frame that improves comprehension — slide 'headlines' that carry the actual point outperform vague titles. Leading with the answer is also the core of the Minto Pyramid Principle taught in MIT Sloan's communication courses.",
       examples: [
         {
           before:
@@ -114,8 +162,88 @@ export const MODULES: Module[] = [
     ],
   },
   {
-    slug: "structure-that-carries",
+    slug: "start-with-the-audience",
     number: 2,
+    title: "Start With the Audience",
+    tagline: "Beat the curse of knowledge — write for their head, not yours.",
+    outcomes: [
+      "Name your reader and what they already know before you write",
+      "Translate jargon into consequences the audience cares about",
+      "Lead with their stake — what's in it for them",
+    ],
+    lesson: {
+      summary:
+        "Before any technique, ask: who is reading this, and what do they already know? The single most reliable way to be misunderstood is to write from inside your own head — assuming the reader shares your context. Great communicators start from the audience and work backward to the message.",
+      concepts: [
+        {
+          heading: "The curse of knowledge",
+          body: "Once you know something, you can't un-know it — so you systematically overestimate what your reader shares and skip the context they need. This is one of the most robust findings in communication research: it persists even when people are explicitly warned about it or paid to avoid it. 'Just simplify' doesn't fix it. What works is concrete: name your audience, ask what they already know and what they need, and build the missing bridge before the detail.",
+        },
+        {
+          heading: "Answer 'what's in it for them?'",
+          body: "Readers filter everything through their own stake. Frame your message around what the audience cares about — their goals, risks, decisions — not what's interesting to you. The same fact lands differently for a CFO (cost and risk), an engineer (effort and dependencies), and a customer (impact on them). Lead with the version that matches the reader.",
+        },
+        {
+          heading: "Calibrate altitude to the reader",
+          body: "Same facts, different altitude. A board wants the decision and the one number that matters; a peer may need the mechanism. More senior and more time-pressed almost always means higher-level and shorter. Don't flatten everyone to one register — pick the altitude for your actual reader.",
+        },
+        {
+          heading: "Write to one primary audience",
+          body: "Trying to address everyone at once produces a message that lands with no one. When a note has several readers, choose the primary decision-maker, write for them, and let others read over their shoulder. One message, one audience.",
+        },
+      ],
+      evidence:
+        "The curse of knowledge is robust and cross-cultural — it doesn't go away when people are warned or even paid to overcome it, so audience-translation has to be a deliberate step, not an afterthought. MIT Sloan's management-communication courses open with exactly this: a 'strategy checklist' that fixes audience, purpose, and message before a word is written.",
+      examples: [
+        {
+          before:
+            "The migration to the new event-sourced architecture hit a race condition in the Kafka consumer group rebalancing, so we added idempotency keys and replayed the dead-letter queue, which is why we slipped.",
+          after:
+            "We're a week late because a data-pipeline bug corrupted some records; we've fixed it and recovered the data, with no customer impact. Full timeline below.",
+          note: "The 'after' translates internal jargon into the consequence the executive reader actually needs — without dumbing it down inaccurately.",
+        },
+        {
+          before:
+            "We should adopt the new tool because it has better observability and a cleaner API.",
+          after:
+            "To the CFO: 'This tool cuts our incident downtime ~30%, which is ~$120k/year in avoided losses, for $40k.' To the team: 'It kills the 2am pager pain — alerts that actually tell you what broke.'",
+          note: "Same recommendation, reframed around each audience's stake — money and risk for the CFO, daily pain for the team.",
+        },
+      ],
+    },
+    drills: [
+      {
+        id: "translate-for-audience",
+        title: "Translate for the audience",
+        scenario:
+          "You need to tell your non-technical CEO why a project slipped. The real reason: \"The migration to the new event-sourced architecture hit a race condition in the Kafka consumer group rebalancing, so we had to add idempotency keys and replay the dead-letter queue.\"",
+        task: "Rewrite that for the CEO — someone with none of your technical context — in 2–4 sentences, without dumbing it down inaccurately.",
+        tips: [
+          "Beat the curse of knowledge: what does the CEO actually need to know?",
+          "Lead with impact (timeline, cost, customer effect), not the internals.",
+          "Translate jargon into business consequences; keep it honest.",
+        ],
+        focus: ["audience", "clarity"],
+        placeholder: "We're about a week late because…",
+      },
+      {
+        id: "reframe-to-stake",
+        title: "Reframe to their stake",
+        scenario:
+          "You want to convince your CFO to fund a reliability project. You're excited about the engineering elegance, but the CFO cares about cost, risk, and predictability — not architecture.",
+        task: "Write a 3–5 sentence pitch aimed squarely at the CFO's interests.",
+        tips: [
+          "Lead with what the CFO cares about: money, risk, predictability.",
+          "Translate the technical benefit into a business outcome (and a number if you can).",
+          "Cut anything that's only interesting to an engineer.",
+        ],
+        focus: ["audience", "impact"],
+      },
+    ],
+  },
+  {
+    slug: "structure-that-carries",
+    number: 3,
     title: "Structure That Carries",
     tagline: "Pyramid, SCQA, PREP — scaffolding for any message.",
     outcomes: [
@@ -156,6 +284,8 @@ export const MODULES: Module[] = [
           note: "PREP turns a vague opinion into a tight, persuasive case in four moves.",
         },
       ],
+      evidence:
+        "Working memory holds only about three to four 'chunks' at once (Cowan's research), so grouping support into ≤3 buckets — the 'rule of three' — is far easier to hold and recall than a flat list. SCQA and the Minto Pyramid Principle are the structuring tools taught in MIT Sloan's management-communication courses and McKinsey's writing training.",
     },
     drills: [
       {
@@ -228,6 +358,8 @@ export const MODULES: Module[] = [
           note: "Nominalizations (implementation, improvement) become verbs; the sentence drops from 22 words to 10.",
         },
       ],
+      evidence:
+        "Every extra word adds cognitive load. HBR's guidance on concise writing — cut filler, prefer short words for hard ideas — works because lowering the reader's processing cost makes the point easier to find and act on. At the executive level, less really is more.",
     },
     drills: [
       {
@@ -281,6 +413,10 @@ export const MODULES: Module[] = [
           body: "Don't make the reader interpret your numbers. State the insight, then show the number that supports it. 'Mobile is now our primary channel — 62% of signups came from phones last month' beats listing six metrics and hoping the reader connects them.",
         },
         {
+          heading: "What → So what → Now what",
+          body: "An insight still isn't a decision. After the fact (what) and why it matters to this audience (so what), name the action or decision you're asking for (now what). 'Mobile is 62% of signups (what), but our checkout is desktop-first (so what) — I want to fund a mobile checkout rebuild this quarter (now what).' This three-beat chain is what turns analysis into a call to action.",
+        },
+        {
           heading: "Pass the skeptic test",
           body: "Imagine your most skeptical stakeholder reading the claim. Would they accept it, or ask 'based on what?' Pre-empt that question by attaching the evidence to the claim itself.",
         },
@@ -300,6 +436,8 @@ export const MODULES: Module[] = [
           note: "A data dump becomes one insight with honest detail about what didn't move.",
         },
       ],
+      evidence:
+        "Concrete, specific language is recalled better than abstractions (the 'concreteness effect'), and pairing a claim with its evidence pre-empts the skeptic. HBR's 'What → So What → Now What' chain turns raw data into a decision: the fact, why it matters to this audience, and the action you want.",
     },
     drills: [
       {
@@ -320,13 +458,13 @@ export const MODULES: Module[] = [
         title: "One insight, not six metrics",
         scenario:
           "You have these numbers from last month: signups 4,200 (+3%), mobile share 62%, desktop share 38%, avg session 5m (flat), support tickets 310 (-8%), NPS 41 (+2). Your VP asked 'what's the story?'",
-        task: "Write 2–3 sentences that state the single most important insight, then support it.",
+        task: "Answer in 2–4 sentences using What → So What → Now What: the key insight, why it matters, and what you'd do about it.",
         tips: [
-          "Don't recite all six numbers — choose the story.",
-          "Lead with the insight, then the evidence.",
-          "Note honestly what stayed flat if it matters.",
+          "Don't recite all six numbers — choose the story (the 'what').",
+          "Say why it matters to the VP (the 'so what').",
+          "End with a recommended action or decision (the 'now what').",
         ],
-        focus: ["clarity", "precision"],
+        focus: ["clarity", "impact"],
       },
     ],
   },
@@ -373,6 +511,8 @@ export const MODULES: Module[] = [
           note: "Fact, judgment, and next step are labeled and ordered, projecting command of the situation.",
         },
       ],
+      evidence:
+        "Signposting (discourse markers like 'first… second…') helps listeners allocate attention and follow your structure, and explicitly labeling fact vs. judgment builds credibility — both are emphasized in MIT Sloan's advanced communication course for leaders.",
     },
     drills: [
       {
@@ -446,6 +586,8 @@ export const MODULES: Module[] = [
           note: "An unreliable guess becomes an honest 'I don't know' with a deadline and a clearly-flagged estimate.",
         },
       ],
+      evidence:
+        "A direct answer respects the question the listener actually asked, and an honest 'I don't know — here's how I'll find out' preserves credibility better than a confident wrong guess. MIT Sloan's leaders' course explicitly drills handling hostile questions and thinking on your feet.",
     },
     drills: [
       {
@@ -512,6 +654,8 @@ export const MODULES: Module[] = [
           note: "Vague benefit becomes a framed change with concrete stakes and a pre-empted objection — a complete persuasive case.",
         },
       ],
+      evidence:
+        "For an informed, skeptical audience, two-sided messaging — raising and answering the strongest objection yourself — is more persuasive than one-sided claims, and framing a concrete before/after change creates the contrast that moves a decision.",
     },
     drills: [
       {
@@ -539,6 +683,82 @@ export const MODULES: Module[] = [
           "Show you've weighed the cost, not ignored it.",
         ],
         focus: ["impact", "precision"],
+      },
+    ],
+  },
+  {
+    slug: "delivering-hard-messages",
+    number: 8,
+    title: "Delivering Hard Messages",
+    tagline: "Say no, give feedback, and break bad news — clearly is kindly.",
+    outcomes: [
+      "Lead a hard message with the headline, not a cushion of caveats",
+      "Decline a request cleanly while keeping the relationship intact",
+      "Give feedback that is specific and actionable, not vague or personal",
+    ],
+    lesson: {
+      summary:
+        "When the message is unwelcome — a no, a critique, bad news — the instinct is to bury it in softening, apology, and delay. That feels kinder but it's crueler: the reader hunts for the point, misreads how serious it is, and leaves more anxious. Clear is kind. Deliver the hard part early and plainly, own it, and pair it with a path forward.",
+      concepts: [
+        {
+          heading: "Clear is kind — front-load the hard part",
+          body: "Cushioning the bad news in three paragraphs of preamble doesn't soften the blow; it makes the reader search for it and doubt how bad it really is. State the hard thing plainly and early — 'We're not moving forward with the project' — then explain. Warmth lives in the explanation and the next step, not in hiding the headline. Being vague to spare someone's feelings usually spares your discomfort, not theirs.",
+        },
+        {
+          heading: "Say no to the request, yes to the person",
+          body: "A clean 'no' is a gift — it lets people plan. Decline the specific ask directly, give a brief honest reason (not a pile of excuses), and where you can, offer an alternative or a door left open. 'I can't take this on this quarter — I'm at capacity on the launch. I could revisit in Q3, or Sam may have room now.' No guilt, no false maybe that wastes everyone's time.",
+        },
+        {
+          heading: "Feedback: behavior, impact, ask",
+          body: "Vague or personal feedback ('be more proactive', 'your attitude') can't be acted on and breeds defensiveness. Name the specific behavior you observed, its concrete impact, and the change you want: 'The last two PRs shipped without tests (behavior), and both caused a production bug (impact). Going forward, run the test suite before requesting review (ask).' Describe what happened, not what kind of person they are.",
+        },
+      ],
+      evidence:
+        "Brené Brown's research-backed maxim — 'clear is kind, unclear is unkind' — captures why hedged bad news backfires: ambiguity transfers your discomfort onto the reader. The Situation-Behavior-Impact (SBI) model from the Center for Creative Leadership keeps feedback specific and non-personal, which makes it easier to hear and to act on.",
+      examples: [
+        {
+          before:
+            "Hey! So I've been thinking a lot about your proposal and I really appreciate all the effort you put in, it's clearly well thought through, and I'd love to support it in some way, it's just that timing-wise things are a bit tricky right now and I'm not totally sure where it fits, so maybe we can find some time to chat about it at some point?",
+          after:
+            "I'm going to pass on the proposal for now — it's strong, but it doesn't fit this quarter's priorities. If budget opens up after Q3 planning, I'd want to revisit it. Thanks for the thorough work on it.",
+          note: "The 'after' gives a clean no in the first sentence, an honest reason, and a real door left open — instead of a warm-sounding maybe that leaves the person guessing.",
+        },
+        {
+          before:
+            "I feel like you've kind of been dropping the ball lately and not really bringing your A-game — I need you to step it up and be more reliable going forward.",
+          after:
+            "The last two releases went out without the test suite run, and both caused a customer-facing bug (behavior + impact). Going forward, I need tests run and green before you request review (ask). Can you build that into your checklist?",
+          note: "Character judgment ('dropping the ball', 'be more reliable') becomes specific behavior, concrete impact, and a clear, doable ask the person can actually act on.",
+        },
+      ],
+    },
+    drills: [
+      {
+        id: "clean-no",
+        title: "Say no without the runaround",
+        scenario:
+          "A respected senior colleague asks you to join a cross-functional committee that meets weekly. You have no bandwidth — you're already behind on a launch — and you need to decline.",
+        task: "Write a 3–5 sentence reply that says no clearly, keeps the relationship warm, and avoids a false 'maybe'.",
+        tips: [
+          "Lead with the no — don't make them read to the end to find it.",
+          "Give one honest reason, not a pile of excuses.",
+          "Offer an alternative or a door left open if there's a real one.",
+        ],
+        placeholder: "Thanks for thinking of me — I can't take this on right now because…",
+        focus: ["impact", "clarity"],
+      },
+      {
+        id: "behavior-impact-ask",
+        title: "Feedback that lands",
+        scenario:
+          "A talented report keeps shipping work that breaks because they skip testing. You've felt the friction but only hinted at it. You need to give direct, useful feedback in your next 1:1.",
+        task: "Write 3–5 sentences using behavior → impact → ask. Be specific and keep it about the work, not their character.",
+        tips: [
+          "Name the exact behavior you observed — no labels like 'careless'.",
+          "State the concrete impact it had.",
+          "End with a clear, doable ask, not a vague 'do better'.",
+        ],
+        focus: ["precision", "audience"],
       },
     ],
   },
@@ -578,6 +798,8 @@ export const MODULES: Module[] = [
           note: "The integrated version leads with the decision, states the one ask with a deadline, and makes the rest optional — every principle applied at once.",
         },
       ],
+      evidence:
+        "This is the antidote to the curse of knowledge — a robustly documented bias where experts forget what their audience doesn't share. Re-reading your draft as the impatient recipient, and running a fixed pre-send checklist, is the practical de-biasing move the research supports.",
     },
     drills: [
       {
@@ -611,6 +833,12 @@ export const MODULES: Module[] = [
     ],
   },
 ];
+
+// Number modules by their position so inserting/reordering never desyncs.
+export const MODULES: Module[] = RAW_MODULES.map((m, i) => ({
+  ...m,
+  number: i + 1,
+}));
 
 export const MODULE_MAP: Record<string, Module> = MODULES.reduce(
   (acc, m) => {

@@ -6,6 +6,7 @@ export type DimensionKey =
   | "concision"
   | "structure"
   | "precision"
+  | "audience"
   | "impact";
 
 export interface Dimension {
@@ -30,6 +31,8 @@ export interface Lesson {
   summary: string;
   concepts: Concept[];
   examples: Example[];
+  /** Short, cited note on why the technique works (the research basis). */
+  evidence?: string;
 }
 
 /** An interactive exercise the learner submits a response to for AI feedback. */
@@ -76,4 +79,31 @@ export interface Feedback {
   rewrite: string; // a stronger version of the learner's response
   rewriteRationale: string; // why the rewrite is stronger
   drill: string; // one targeted practice suggestion
+}
+
+// ---- Spoken practice (audio) contract ----
+
+/** Delivery dimensions evaluated from a spoken recording. */
+export type DeliveryKey = "pace" | "fillers" | "clarity" | "pronunciation";
+
+export interface DeliveryDimension {
+  key: DeliveryKey;
+  label: string;
+  description: string;
+}
+
+export interface DeliveryScore {
+  key: DeliveryKey;
+  score: number; // 0-100
+  comment: string;
+}
+
+export interface SpokenFeedback {
+  transcript: string; // what the AI heard
+  headline: string; // one-line verdict on the delivery
+  delivery: DeliveryScore[];
+  fillerWords: string[]; // specific fillers/false-starts caught
+  strengths: string[];
+  improvements: string[];
+  modelDelivery: string; // a stronger spoken version to read aloud
 }

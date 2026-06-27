@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { SignedIn, SignedOut, SignInButton, SignUpButton } from "@/components/auth";
 import { MODULES, MODULE_MAP } from "@/lib/course";
 import { DrillPractice } from "@/components/DrillPractice";
 
@@ -75,6 +76,17 @@ export default function ModulePage({ params }: { params: { slug: string } }) {
             </div>
           ))}
         </div>
+
+        {module.lesson.evidence ? (
+          <div className="mt-8 rounded-lg border border-ink/10 bg-accent-wash/40 p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-accent">
+              Why it works — the evidence
+            </div>
+            <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
+              {module.lesson.evidence}
+            </p>
+          </div>
+        ) : null}
       </section>
 
       {/* Examples */}
@@ -125,9 +137,32 @@ export default function ModulePage({ params }: { params: { slug: string } }) {
             like — iteration is the point.
           </p>
         </div>
-        {module.drills.map((drill) => (
-          <DrillPractice key={drill.id} moduleSlug={module.slug} drill={drill} />
-        ))}
+        <SignedIn>
+          {module.drills.map((drill) => (
+            <DrillPractice key={drill.id} moduleSlug={module.slug} drill={drill} />
+          ))}
+        </SignedIn>
+        <SignedOut>
+          <div className="rounded-xl border border-ink/10 bg-white/60 p-8 text-center">
+            <p className="font-serif text-lg">Sign in to practice and get AI feedback.</p>
+            <p className="mx-auto mt-1 max-w-md text-sm text-ink-mute">
+              Create a free account to write or speak your answers, get scored against the
+              rubric, and track your progress across the course.
+            </p>
+            <div className="mt-5 flex justify-center gap-3">
+              <SignUpButton mode="modal">
+                <button className="rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-transform hover:-translate-y-0.5">
+                  Sign up free
+                </button>
+              </SignUpButton>
+              <SignInButton mode="modal">
+                <button className="rounded-md border border-ink/15 px-5 py-2.5 text-sm font-medium text-ink-soft transition-colors hover:border-accent hover:text-accent">
+                  Sign in
+                </button>
+              </SignInButton>
+            </div>
+          </div>
+        </SignedOut>
       </section>
 
       {/* Nav */}
