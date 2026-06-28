@@ -3,7 +3,7 @@ import { SignedIn, SignedOut, SignInButton, SignUpButton } from "@/components/au
 import { ProgressDashboard } from "@/components/ProgressDashboard";
 
 export const metadata = {
-  title: "My progress · Articulate",
+  title: "My progress · iArticulate",
   description: "Your practiced drills and scores.",
 };
 

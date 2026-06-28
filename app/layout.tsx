@@ -14,7 +14,7 @@ import { SUPPORT_MAILTO } from "@/lib/site";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Articulate — Executive Communication & Clarity",
+  title: "iArticulate — Executive Communication & Clarity",
   description:
     "An articulation training course with AI coaching. Practice executive communication and get specific, rubric-based feedback on clarity, concision, structure, precision, and presence.",
   manifest: "/manifest.webmanifest",
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   // standalone app rather than inside Safari.
   appleWebApp: {
     capable: true,
-    title: "Articulate",
+    title: "iArticulate",
     statusBarStyle: "default",
   },
 };
@@ -45,7 +45,8 @@ export default function RootLayout({
             <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
               <Link href="/" className="group flex items-baseline gap-2">
                 <span className="font-serif text-xl font-semibold tracking-tight">
-                  Articulate
+                  iArticulate
+                  <sup className="ml-0.5 align-super text-[0.5em] font-normal">™</sup>
                 </span>
                 <span className="hidden text-xs uppercase tracking-widest text-ink-mute sm:inline">
                   clarity training
@@ -93,8 +94,8 @@ export default function RootLayout({
           <footer className="border-t border-ink/10">
             <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 px-6 py-6 text-xs text-ink-mute">
               <span>
-                Articulate · AI-coached practice for executive communication. Feedback is
-                AI-generated and meant as practice, not gospel.
+                iArticulate™ · AI-coached practice for executive communication. Feedback
+                is AI-generated and meant as practice, not gospel.
               </span>
               <a href={SUPPORT_MAILTO} className="whitespace-nowrap transition-colors hover:text-accent">
                 Contact support

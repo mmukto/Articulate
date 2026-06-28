@@ -4,8 +4,8 @@ import type { MetadataRoute } from "next";
 // (e.g. iPad "Add to Home Screen" launches it full-screen, no browser chrome).
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Articulate — Clarity Training",
-    short_name: "Articulate",
+    name: "iArticulate — Clarity Training",
+    short_name: "iArticulate",
     description:
       "AI-coached practice for executive communication and clarity. Lessons, drills, and instant rubric-based feedback.",
     start_url: "/",

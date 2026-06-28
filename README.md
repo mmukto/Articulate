@@ -1,4 +1,4 @@
-# Articulate
+# iArticulate&trade;
 
 An **articulation training course with AI coaching** for executive communication and
 clarity. You read short, practical lessons, then practice on realistic drills — and an

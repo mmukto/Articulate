@@ -18,7 +18,8 @@ export interface Tier {
   priceUsd: number;
   /** Total drills unlocked across all modules. */
   drillTotal: number;
-  /** Annual AI-feedback spend ceiling for this tier, in USD. */
+  /** Annual AI-feedback spend ceiling, in USD (= 1/3 of the annual price; a
+   *  small fixed trial for Free). Caps AI cost at a third of the revenue. */
   aiBudgetUsd: number;
   /** Short marketing line for the pricing card. */
   blurb: string;
@@ -26,13 +27,20 @@ export interface Tier {
   highlight?: boolean;
 }
 
-export const TIERS: Tier[] = [
+// AI-feedback spend is capped at one-third of the annual price, so AI cost can
+// never exceed a third of a subscription's revenue. Free has no price to take a
+// third of, so it gets a small fixed trial allowance.
+const FREE_AI_BUDGET_USD = 1;
+export function aiBudgetForPrice(priceUsd: number): number {
+  return priceUsd > 0 ? Math.round((priceUsd / 3) * 100) / 100 : FREE_AI_BUDGET_USD;
+}
+
+const RAW_TIERS: Omit<Tier, "aiBudgetUsd">[] = [
   {
     id: "free",
     name: "Free",
     priceUsd: 0,
     drillTotal: 10,
-    aiBudgetUsd: 2,
     blurb: "1 drill per module — try the method.",
   },
   {
@@ -40,7 +48,6 @@ export const TIERS: Tier[] = [
     name: "Starter",
     priceUsd: 4.99,
     drillTotal: 30,
-    aiBudgetUsd: 5,
     blurb: "3 drills per module.",
   },
   {
@@ -48,7 +55,6 @@ export const TIERS: Tier[] = [
     name: "Plus",
     priceUsd: 9.99,
     drillTotal: 60,
-    aiBudgetUsd: 10,
     blurb: "6 drills per module.",
     highlight: true,
   },
@@ -57,7 +63,6 @@ export const TIERS: Tier[] = [
     name: "Pro",
     priceUsd: 19.99,
     drillTotal: 120,
-    aiBudgetUsd: 20,
     blurb: "12 drills per module.",
   },
   {
@@ -65,10 +70,15 @@ export const TIERS: Tier[] = [
     name: "Max",
     priceUsd: 49.99,
     drillTotal: 250,
-    aiBudgetUsd: 40,
     blurb: "All 25 drills per module — the full library.",
   },
 ];
+
+// 1/3-of-price AI budget applied to every tier.
+export const TIERS: Tier[] = RAW_TIERS.map((t) => ({
+  ...t,
+  aiBudgetUsd: aiBudgetForPrice(t.priceUsd),
+}));
 
 export const TIER_MAP: Record<TierId, Tier> = TIERS.reduce(
   (acc, t) => {

@@ -12,9 +12,9 @@ export function generateStaticParams() {
 
 export function generateMetadata({ params }: { params: { slug: string } }) {
   const module = MODULE_MAP[params.slug];
-  if (!module) return { title: "Module not found · Articulate" };
+  if (!module) return { title: "Module not found · iArticulate" };
   return {
-    title: `${module.number}. ${module.title} · Articulate`,
+    title: `${module.number}. ${module.title} · iArticulate`,
     description: module.tagline,
   };
 }

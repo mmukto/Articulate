@@ -53,9 +53,18 @@ lives in `lib/course.ts`; the AI feedback contract is in `lib/types.ts`.
   billing portal (`/portal`). Optional like Clerk — unset `STRIPE_SECRET_KEY` and the app
   still builds/runs (checkout returns 503). Needs the secret key + 4 annual price IDs +
   webhook secret (see `.env.example`).
+- **Cancellation w/ usage refund** (`app/api/billing/cancel`): cancel is a custom flow
+  (not Stripe's portal cancel), refund = annual price − AI spend − (drills completed /
+  tier total) × price, floored at 0. POST previews the breakdown; `{confirm:true}` issues
+  the Stripe partial refund, cancels the sub, reverts to Free. Pricing page shows the
+  preview before confirming. (Configure the Stripe billing portal to **disable**
+  cancellation so the refund policy can't be bypassed.)
+- **Brand**: user-facing name is **iArticulate™** (header wordmark carries the ™). The
+  repo/package/Vercel project keep the technical id `articulate`.
 - **Per-user AI cost guardrails** (`lib/limits.ts`): each signed-in user gets an annual
   AI-feedback allowance that **renews every 365 days**, sized by their tier
-  (`tier.aiBudgetUsd`; Free = $2). Metered from real token usage, stored in Clerk
+  (`tier.aiBudgetUsd` = **1/3 of the annual price**; Free = $1 trial; see
+  `aiBudgetForPrice` in `lib/tiers.ts`). Metered from real token usage, stored in Clerk
   `privateMetadata` (server-only, tamper-proof), enforced in the feedback/speak routes,
   surfaced by the header `AllowanceMeter` via `/api/usage`. If you change model/provider,
   update the per-token price in `lib/limits.ts`.

@@ -5,12 +5,23 @@ import Link from "next/link";
 import { TIERS, drillsPerModule, type TierId } from "@/lib/tiers";
 import { SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/lib/site";
 
+type CancelBreakdown = {
+  tierName: string;
+  price: number;
+  aiCostUsd: number;
+  drillsCompleted: number;
+  drillTotal: number;
+  drillCharge: number;
+  refund: number;
+};
+
 export default function PricingPage() {
   const [currentTier, setCurrentTier] = useState<TierId | null>(null);
   const [signedIn, setSignedIn] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [cancelData, setCancelData] = useState<CancelBreakdown | null>(null);
 
   useEffect(() => {
     const status = new URLSearchParams(window.location.search).get("status");
@@ -63,6 +74,45 @@ export default function PricingPage() {
     }
   }
 
+  // Fetch the refund preview (no charge yet) and show the confirmation panel.
+  async function openCancel() {
+    setError(null);
+    setBusy("cancel");
+    try {
+      const res = await fetch("/api/billing/cancel", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Couldn't load cancellation details.");
+      setCancelData(data as CancelBreakdown);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function confirmCancel() {
+    setError(null);
+    setBusy("cancel-confirm");
+    try {
+      const res = await fetch("/api/billing/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: true }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.canceled) throw new Error(data?.error || "Couldn't cancel.");
+      setCancelData(null);
+      setCurrentTier("free");
+      setNotice(
+        `Your ${data.tierName} plan is canceled. A refund of $${Number(data.refund).toFixed(2)} is on its way.`,
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <div className="space-y-8">
       <header className="text-center">
@@ -83,6 +133,53 @@ export default function PricingPage() {
       {error ? (
         <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
+        </div>
+      ) : null}
+
+      {cancelData ? (
+        <div className="rounded-xl border border-red-300 bg-red-50 p-5 text-sm">
+          <h3 className="font-serif text-lg font-semibold text-ink">
+            Cancel your {cancelData.tierName} plan?
+          </h3>
+          <p className="mt-1 text-ink-soft">
+            Cancellation is immediate. Your refund is your annual price minus the AI
+            coaching you’ve used and the drills you’ve completed:
+          </p>
+          <dl className="mx-auto mt-3 max-w-xs space-y-1 text-ink">
+            <div className="flex justify-between">
+              <dt>Annual price</dt>
+              <dd>${cancelData.price.toFixed(2)}</dd>
+            </div>
+            <div className="flex justify-between text-ink-mute">
+              <dt>− AI usage</dt>
+              <dd>−${cancelData.aiCostUsd.toFixed(2)}</dd>
+            </div>
+            <div className="flex justify-between text-ink-mute">
+              <dt>
+                − Drills used ({cancelData.drillsCompleted}/{cancelData.drillTotal})
+              </dt>
+              <dd>−${cancelData.drillCharge.toFixed(2)}</dd>
+            </div>
+            <div className="flex justify-between border-t border-red-200 pt-1 font-semibold">
+              <dt>Refund</dt>
+              <dd>${cancelData.refund.toFixed(2)}</dd>
+            </div>
+          </dl>
+          <div className="mt-4 flex justify-center gap-3">
+            <button
+              onClick={confirmCancel}
+              disabled={busy === "cancel-confirm"}
+              className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm disabled:opacity-60"
+            >
+              {busy === "cancel-confirm" ? "Canceling…" : "Confirm cancellation"}
+            </button>
+            <button
+              onClick={() => setCancelData(null)}
+              className="rounded-md border border-ink/15 px-4 py-2 text-sm text-ink-soft transition-colors hover:border-accent hover:text-accent"
+            >
+              Keep my plan
+            </button>
+          </div>
         </div>
       ) : null}
 
@@ -128,13 +225,22 @@ export default function PricingPage() {
                       Current plan
                     </div>
                     {tier.priceUsd > 0 ? (
-                      <button
-                        onClick={manage}
-                        disabled={busy === "manage"}
-                        className="w-full text-xs text-ink-mute underline-offset-2 hover:text-accent hover:underline disabled:opacity-60"
-                      >
-                        {busy === "manage" ? "Opening…" : "Manage or cancel"}
-                      </button>
+                      <div className="space-y-1 text-center">
+                        <button
+                          onClick={openCancel}
+                          disabled={busy === "cancel"}
+                          className="block w-full text-xs text-red-700 underline-offset-2 hover:underline disabled:opacity-60"
+                        >
+                          {busy === "cancel" ? "Loading…" : "Cancel subscription"}
+                        </button>
+                        <button
+                          onClick={manage}
+                          disabled={busy === "manage"}
+                          className="block w-full text-xs text-ink-mute underline-offset-2 hover:text-accent hover:underline disabled:opacity-60"
+                        >
+                          {busy === "manage" ? "Opening…" : "Manage billing"}
+                        </button>
+                      </div>
                     ) : null}
                   </div>
                 ) : tier.priceUsd === 0 ? (
@@ -170,8 +276,8 @@ export default function PricingPage() {
       ) : null}
 
       <p className="text-center text-xs text-ink-mute">
-        Payments are processed securely by Stripe. Subscriptions renew annually; cancel
-        anytime from “Manage or cancel.” Questions?{" "}
+        Payments are processed securely by Stripe. You can cancel anytime — your refund is
+        your annual price minus your AI usage and the drills you’ve completed. Questions?{" "}
         <a href={SUPPORT_MAILTO} className="text-accent hover:underline">
           {SUPPORT_EMAIL}
         </a>

@@ -45,6 +45,11 @@ function readMeter(privateMetadata: unknown): Meter | null {
   };
 }
 
+/** Current AI spend (USD) within the active window — used for cancellation refund math. */
+export function readSpentUsd(privateMetadata: unknown): number {
+  return readMeter(privateMetadata)?.spentUsd ?? 0;
+}
+
 const round6 = (n: number) => Math.round(n * 1_000_000) / 1_000_000;
 
 async function writeMeter(
