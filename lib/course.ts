@@ -322,7 +322,7 @@ const RAW_MODULES: Module[] = [
   },
   {
     slug: "cut-to-the-bone",
-    number: 3,
+    number: 4,
     title: "Cut to the Bone",
     tagline: "Concision is a sign of respect — and of clear thinking.",
     outcomes: [
@@ -395,7 +395,7 @@ const RAW_MODULES: Module[] = [
   },
   {
     slug: "precision-and-evidence",
-    number: 4,
+    number: 5,
     title: "Precision & Evidence",
     tagline: "Trade vague adjectives for concrete numbers and nouns.",
     outcomes: [
@@ -473,7 +473,7 @@ const RAW_MODULES: Module[] = [
   },
   {
     slug: "executive-presence",
-    number: 5,
+    number: 6,
     title: "Executive Presence in Words",
     tagline: "Sound like someone who has decided.",
     outcomes: [
@@ -548,7 +548,7 @@ const RAW_MODULES: Module[] = [
   },
   {
     slug: "answering-under-pressure",
-    number: 6,
+    number: 7,
     title: "Answering Under Pressure",
     tagline: "Direct answers to hard questions, including 'I don't know.'",
     outcomes: [
@@ -623,7 +623,7 @@ const RAW_MODULES: Module[] = [
   },
   {
     slug: "narrative-and-persuasion",
-    number: 7,
+    number: 8,
     title: "Narrative & Persuasion",
     tagline: "Move people from data to decision with story.",
     outcomes: [
@@ -691,9 +691,9 @@ const RAW_MODULES: Module[] = [
   },
   {
     slug: "delivering-hard-messages",
-    number: 8,
+    number: 9,
     title: "Delivering Hard Messages",
-    tagline: "Say no, give feedback, and break bad news — clearly is kindly.",
+    tagline: "Say no, give feedback, break bad news — clear is kind.",
     outcomes: [
       "Lead a hard message with the headline, not a cushion of caveats",
       "Decline a request cleanly while keeping the relationship intact",
@@ -767,7 +767,7 @@ const RAW_MODULES: Module[] = [
   },
   {
     slug: "putting-it-together",
-    number: 8,
+    number: 10,
     title: "Putting It Together",
     tagline: "Full-stack executive communication under real constraints.",
     outcomes: [
