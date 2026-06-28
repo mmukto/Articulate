@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { TIERS, drillsPerModule, type TierId } from "@/lib/tiers";
-import { LEVELS, type Level } from "@/lib/levels";
+import { TIERS, drillsPerModule, tierById, type TierId } from "@/lib/tiers";
+import { LEVELS, LEVEL_MAP, type Level } from "@/lib/levels";
 import { SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/lib/site";
 
 type CancelBreakdown = {
@@ -31,25 +31,63 @@ export default function PricingPage() {
   const [cancelData, setCancelData] = useState<CancelBreakdown | null>(null);
 
   useEffect(() => {
-    const status = new URLSearchParams(window.location.search).get("status");
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("status");
+    const sessionId = params.get("session_id");
     if (status === "success") {
-      setNotice("Thanks! Your subscription is active — it may take a few seconds to show.");
+      setNotice("Thanks! Your subscription is active — updating your plan…");
     } else if (status === "cancel") {
       setNotice("Checkout canceled — no charge was made.");
     }
-    fetch("/api/usage", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((d) => {
-        if (d?.enabled) {
-          setSignedIn(true);
-          setCurrentTier(d.tierId as TierId);
-          const owned = (Array.isArray(d.levels) ? d.levels : []) as Level[];
-          setOwnedLevels(owned);
-          // Preselect the levels they own, or their current career level.
-          setSelectedLevels(owned.length > 0 ? owned : [(d.currentLevel as Level) ?? "senior"]);
+
+    let cancelled = false;
+
+    async function load(): Promise<{ tierId: TierId } | null> {
+      try {
+        const d = await fetch("/api/usage", { cache: "no-store" }).then((r) => r.json());
+        if (cancelled || !d?.enabled) return null;
+        setSignedIn(true);
+        setCurrentTier(d.tierId as TierId);
+        const owned = (Array.isArray(d.levels) ? d.levels : []) as Level[];
+        setOwnedLevels(owned);
+        // Preselect the levels they own, or their current career level.
+        setSelectedLevels(owned.length > 0 ? owned : [(d.currentLevel as Level) ?? "senior"]);
+        return d as { tierId: TierId };
+      } catch {
+        return null;
+      }
+    }
+
+    (async () => {
+      // After checkout, reconcile straight from Stripe so the plan reflects even
+      // if the webhook is slow — then load the usage summary.
+      if (status === "success" && sessionId) {
+        await fetch("/api/billing/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId }),
+        }).catch(() => {});
+      }
+      let d = await load();
+      if (status === "success") {
+        // Belt-and-suspenders: if it still reads Free, poll a few times.
+        for (let i = 0; i < 6 && !cancelled && (!d || d.tierId === "free"); i++) {
+          await new Promise((r) => setTimeout(r, 1500));
+          d = await load();
         }
-      })
-      .catch(() => {});
+        if (!cancelled) {
+          setNotice(
+            d && d.tierId !== "free"
+              ? "Your subscription is active."
+              : "Payment received — your plan is taking a moment to activate. Refresh in a few seconds.",
+          );
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function toggleLevel(id: Level) {
@@ -147,6 +185,35 @@ export default function PricingPage() {
           the price below is for one level, so all three levels cost 3×. Billed annually.
         </p>
       </header>
+
+      {/* Current subscription summary */}
+      {signedIn && currentTier && currentTier !== "free" ? (
+        <section className="rounded-xl border-2 border-accent bg-accent-wash/30 p-5">
+          <div className="text-xs font-semibold uppercase tracking-wide text-accent">
+            Your current plan
+          </div>
+          <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="font-serif text-xl font-semibold text-ink">
+              {tierById(currentTier).name}
+              <span className="font-normal text-ink-soft">
+                {" · "}
+                {ownedLevels.length} level{ownedLevels.length === 1 ? "" : "s"}
+              </span>
+            </h2>
+            <span className="font-serif text-lg font-semibold text-ink">
+              $
+              {(tierById(currentTier).priceUsd * Math.max(1, ownedLevels.length)).toFixed(2)}
+              <span className="text-sm font-normal text-ink-mute"> /year</span>
+            </span>
+          </div>
+          <p className="mt-1 text-sm text-ink-soft">
+            {ownedLevels.length > 0
+              ? `Career level${ownedLevels.length === 1 ? "" : "s"}: ` +
+                ownedLevels.map((l) => LEVEL_MAP[l].name).join(", ")
+              : "—"}
+          </p>
+        </section>
+      ) : null}
 
       {/* Level chooser — the price below multiplies by how many you pick. */}
       <section className="rounded-xl border border-ink/10 bg-white/50 p-5">

@@ -101,7 +101,9 @@ export async function POST(req: NextRequest) {
     metadata,
     subscription_data: { metadata },
     allow_promotion_codes: true,
-    success_url: `${origin}/pricing?status=success`,
+    // session_id lets the success page reconcile the plan immediately (in case
+    // the webhook is delayed). Stripe substitutes the real id on redirect.
+    success_url: `${origin}/pricing?status=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/pricing?status=cancel`,
   });
 

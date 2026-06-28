@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { getStripe, STRIPE_ENABLED, tierForPriceId } from "@/lib/stripe";
+import { getStripe, STRIPE_ENABLED } from "@/lib/stripe";
 import { setUserSubscription } from "@/lib/entitlements";
-import { LEVEL_IDS, parseLevels } from "@/lib/levels";
+import { applyStripeSubscription } from "@/lib/billing";
 
 export const runtime = "nodejs";
 
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
         const userId = session.client_reference_id ?? session.metadata?.userId;
         if (userId && session.subscription) {
           const sub = await stripe.subscriptions.retrieve(session.subscription as string);
-          await applySubscription(userId, sub, session.customer as string | null);
+          await applyStripeSubscription(userId, sub, session.customer as string | null);
         }
         break;
       }
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       case "customer.subscription.updated": {
         const sub = event.data.object as Stripe.Subscription;
         const userId = sub.metadata?.userId;
-        if (userId) await applySubscription(userId, sub, sub.customer as string);
+        if (userId) await applyStripeSubscription(userId, sub, sub.customer as string);
         break;
       }
       case "customer.subscription.deleted": {
@@ -68,34 +68,4 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ received: true });
-}
-
-async function applySubscription(
-  userId: string,
-  sub: Stripe.Subscription,
-  customerId: string | null,
-): Promise<void> {
-  const item = sub.items.data[0];
-  const priceId = item?.price?.id;
-  const tier = tierForPriceId(priceId) ?? "free";
-  const active = sub.status === "active" || sub.status === "trialing";
-  // In the current Stripe API the billing period lives on the subscription item.
-  const periodEnd = item?.current_period_end;
-
-  // Which levels were purchased (pricing is per level). Prefer the explicit list
-  // in metadata; fall back to the first N levels by quantity if it's missing.
-  let levels = parseLevels(sub.metadata?.levels);
-  if (levels.length === 0) {
-    const qty = typeof item?.quantity === "number" ? item.quantity : 1;
-    levels = LEVEL_IDS.slice(0, Math.min(Math.max(qty, 1), LEVEL_IDS.length));
-  }
-
-  await setUserSubscription(userId, {
-    tier: active ? tier : "free",
-    levels: active ? levels : [],
-    // Access lasts through the paid period; effectiveTier() reverts to Free after.
-    expiresAt: periodEnd ? periodEnd * 1000 : undefined,
-    stripeCustomerId: customerId ?? (sub.customer as string),
-    stripeSubscriptionId: sub.id,
-  });
 }
