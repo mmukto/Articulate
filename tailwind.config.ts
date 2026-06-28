@@ -9,15 +9,21 @@ const config: Config = {
     extend: {
       colors: {
         ink: {
-          DEFAULT: "#1b1d21",
-          soft: "#3c4046",
-          mute: "#6a6f76",
+          DEFAULT: "#201f1e",
+          soft: "#3b3a39",
+          mute: "#605e5c",
         },
-        paper: "#f7f8fa",
+        paper: "#faf9f8",
         accent: {
-          DEFAULT: "#2a6098",
-          soft: "#7ea8d2",
-          wash: "#e7eef6",
+          DEFAULT: "#6b6ed4",
+          soft: "#abadea",
+          wash: "#ededfb",
+        },
+        // Reserved strictly for errors and failing scores — keeps the red
+        // "something's wrong" cue distinct from the violet brand accent.
+        danger: {
+          DEFAULT: "#c0322b",
+          wash: "#fbe9e8",
         },
       },
       fontFamily: {

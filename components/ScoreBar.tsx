@@ -1,7 +1,7 @@
 function scoreColor(score: number): string {
   if (score >= 80) return "bg-emerald-600";
   if (score >= 60) return "bg-amber-500";
-  return "bg-accent";
+  return "bg-danger";
 }
 
 export function ScoreBar({

@@ -15,7 +15,7 @@ type Mode = "write" | "speak";
 function overallColor(score: number): string {
   if (score >= 80) return "text-emerald-700";
   if (score >= 60) return "text-amber-600";
-  return "text-accent";
+  return "text-danger";
 }
 
 export function DrillPractice({
@@ -181,7 +181,7 @@ function WritePractice({
       ) : null}
 
       {error ? (
-        <div className="mt-4 rounded-lg border border-accent/30 bg-accent-wash/50 p-4 text-sm text-accent">
+        <div className="mt-4 rounded-lg border border-danger/30 bg-danger-wash/60 p-4 text-sm text-danger">
           {error}
         </div>
       ) : null}

@@ -231,7 +231,7 @@ export function SpeakPractice({
       ) : null}
 
       {error ? (
-        <div className="mt-4 rounded-lg border border-accent/30 bg-accent-wash/50 p-4 text-sm text-accent">
+        <div className="mt-4 rounded-lg border border-danger/30 bg-danger-wash/60 p-4 text-sm text-danger">
           {error}
         </div>
       ) : null}

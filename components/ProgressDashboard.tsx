@@ -7,7 +7,7 @@ import { useProgress, drillKey, type DrillStat } from "@/lib/progress";
 function scoreColor(score: number): string {
   if (score >= 80) return "text-emerald-700";
   if (score >= 60) return "text-amber-600";
-  return "text-accent";
+  return "text-danger";
 }
 
 function StatCard({ value, label }: { value: string; label: string }) {
