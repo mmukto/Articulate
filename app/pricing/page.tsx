@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { SignInButton, SignUpButton } from "@/components/auth";
+import { stashCheckout } from "@/components/CheckoutResume";
 import { TIERS, drillsPerModule, tierById, type TierId } from "@/lib/tiers";
-import { LEVELS, LEVEL_MAP, DEFAULT_LEVEL, parseLevels, type Level } from "@/lib/levels";
+import { LEVELS, LEVEL_MAP, DEFAULT_LEVEL, type Level } from "@/lib/levels";
 import { SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/lib/site";
 
 type CancelBreakdown = {
@@ -34,12 +35,12 @@ export default function PricingPage() {
     const params = new URLSearchParams(window.location.search);
     const status = params.get("status");
     const sessionId = params.get("session_id");
-    const intent = params.get("intent"); // tier to resume after signup
-    const intentLevels = parseLevels(params.get("levels"));
     if (status === "success") {
       setNotice("Thanks! Your subscription is active — updating your plan…");
     } else if (status === "cancel") {
       setNotice("Checkout canceled — no charge was made.");
+    } else if (status === "resume_failed") {
+      setNotice("Almost there — choose your plan below to finish checkout.");
     }
 
     let cancelled = false;
@@ -83,16 +84,6 @@ export default function PricingPage() {
               ? "Your subscription is active."
               : "Payment received — your plan is taking a moment to activate. Refresh in a few seconds.",
           );
-        }
-      } else if (intent && d) {
-        // Just signed up after picking a paid plan → resume to checkout. Clean
-        // the URL first so a refresh/back doesn't re-trigger it.
-        const validTier = TIERS.find((t) => t.id === intent && t.priceUsd > 0);
-        window.history.replaceState({}, "", "/pricing");
-        if (validTier && !cancelled) {
-          const lv = intentLevels.length > 0 ? intentLevels : selectedLevels;
-          setSelectedLevels(lv);
-          await subscribe(validTier.id, lv);
         }
       } else if (d && d.tierId === "free") {
         // Self-heal: a past purchase may never have been recorded (missed
@@ -142,12 +133,6 @@ export default function PricingPage() {
     }
   }
 
-  // After a signed-out user picks a paid plan and signs up, Clerk redirects back
-  // here with ?intent=<tier>&levels=… — resume straight to checkout.
-  function intentUrl(tier: TierId): string {
-    const lv = encodeURIComponent(selectedLevels.join(","));
-    return `/pricing?intent=${tier}&levels=${lv}`;
-  }
 
   async function manage() {
     setError(null);
@@ -395,8 +380,9 @@ export default function PricingPage() {
                       </button>
                     </SignUpButton>
                   ) : (
-                    <SignUpButton mode="modal" forceRedirectUrl={intentUrl(tier.id)}>
+                    <SignUpButton mode="modal" forceRedirectUrl="/pricing">
                       <button
+                        onClick={() => stashCheckout(tier.id, selectedLevels)}
                         disabled={levelCount === 0}
                         className="w-full rounded-md bg-accent px-4 py-2 text-sm font-medium text-white shadow-sm transition-transform hover:-translate-y-0.5 disabled:opacity-60"
                       >

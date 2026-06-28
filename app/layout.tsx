@@ -5,6 +5,7 @@ import { SignedIn, SignedOut, SignInButton, UserButton } from "@/components/auth
 import { CLERK_ENABLED } from "@/lib/clerk-config";
 import AllowanceMeter from "@/components/AllowanceMeter";
 import LevelChip from "@/components/LevelChip";
+import { CheckoutResume } from "@/components/CheckoutResume";
 import { SUPPORT_MAILTO } from "@/lib/site";
 import "./globals.css";
 
@@ -76,6 +77,7 @@ export default function RootLayout({
                   </Link>
                 </SignedOut>
                 <SignedIn>
+                  <CheckoutResume />
                   <LevelChip />
                   <AllowanceMeter />
                   <Link
