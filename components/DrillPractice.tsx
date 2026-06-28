@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Drill, Feedback } from "@/lib/types";
 import { DIMENSION_MAP } from "@/lib/course";
+import { LEVEL_MAP } from "@/lib/levels";
 import { useProgress } from "@/lib/progress";
 import { ScoreBar } from "./ScoreBar";
 import { SpeakButton } from "./SpeakButton";
@@ -32,6 +33,13 @@ export function DrillPractice({
         <h3 className="font-serif text-xl font-semibold tracking-tight">
           {drill.title}
         </h3>
+        <span
+          title="This scenario is matched to your career level"
+          className="inline-flex items-center gap-1 rounded-full border border-ink/15 px-2 py-0.5 text-[11px] font-medium text-ink-mute"
+        >
+          <span aria-hidden>◐</span>
+          {LEVEL_MAP[drill.level ?? "senior"].name}
+        </span>
         <PracticedBadge moduleSlug={moduleSlug} drillId={drill.id} />
         <div className="ml-auto flex flex-wrap gap-1.5">
           {drill.focus.map((k) => (
