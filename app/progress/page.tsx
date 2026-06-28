@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SignedIn, SignedOut, SignInButton, SignUpButton } from "@/components/auth";
 import { ProgressDashboard } from "@/components/ProgressDashboard";
+import { LevelPicker } from "@/components/LevelPicker";
 
 export const metadata = {
   title: "My progress · iArticulate",
@@ -26,7 +27,20 @@ export default function ProgressPage() {
       </div>
 
       <SignedIn>
-        <ProgressDashboard />
+        <div className="space-y-8">
+          <section>
+            <h2 className="font-serif text-xl font-semibold tracking-tight">
+              Your career level
+            </h2>
+            <p className="mt-1 text-sm text-ink-soft">
+              Drills and AI coaching adjust to match your stage — change it anytime.
+            </p>
+            <div className="mt-3">
+              <LevelPicker heading="Current level" />
+            </div>
+          </section>
+          <ProgressDashboard />
+        </div>
       </SignedIn>
       <SignedOut>
         <div className="rounded-xl border border-ink/10 bg-white/60 p-8 text-center">

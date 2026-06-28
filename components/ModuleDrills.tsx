@@ -3,9 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { Module } from "@/lib/types";
-import { LEVELS, LEVEL_MAP, readLevel, hasChosenLevel, type Level } from "@/lib/levels";
+import { LEVEL_MAP, readLevel, type Level } from "@/lib/levels";
 import { useMaybeUser } from "@/components/auth";
 import { DrillPractice } from "@/components/DrillPractice";
+import { LevelPicker } from "@/components/LevelPicker";
 
 // Renders a module's drills filtered to the signed-in user's career level, with
 // a level switcher / onboarding prompt. Level lives in Clerk unsafeMetadata
@@ -23,24 +24,9 @@ export function ModuleDrills({
 }) {
   const { user } = useMaybeUser();
   const [override, setOverride] = useState<Level | null>(null);
-  const [saving, setSaving] = useState(false);
 
   const level = override ?? readLevel(user?.unsafeMetadata);
-  const chosen = !!override || hasChosenLevel(user?.unsafeMetadata);
   const levelName = LEVEL_MAP[level].name;
-
-  async function pick(next: Level) {
-    setOverride(next);
-    if (!user) return;
-    setSaving(true);
-    try {
-      await user.update({ unsafeMetadata: { ...(user.unsafeMetadata ?? {}), level: next } });
-    } catch {
-      /* offline / rate-limited — local state still reflects the choice */
-    } finally {
-      setSaving(false);
-    }
-  }
 
   const levelDrills = module.drills.filter((d) => (d.level ?? "senior") === level);
   const unlocked = levelDrills.slice(0, tierCount);
@@ -49,35 +35,7 @@ export function ModuleDrills({
   return (
     <div className="space-y-6">
       {/* Level switcher / onboarding */}
-      <div className="rounded-lg border border-ink/10 bg-white/50 p-4">
-        {chosen ? (
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-mute">
-            Practicing as
-          </p>
-        ) : (
-          <p className="mb-2 text-sm font-medium text-accent">
-            Pick your career level so the drills and AI coaching match your world:
-          </p>
-        )}
-        <div className="flex flex-wrap gap-2">
-          {LEVELS.map((l) => (
-            <button
-              key={l.id}
-              onClick={() => pick(l.id)}
-              disabled={saving}
-              title={l.blurb}
-              className={`rounded-md border px-3 py-1.5 text-sm transition-colors disabled:opacity-60 ${
-                level === l.id
-                  ? "border-accent bg-accent text-white"
-                  : "border-ink/15 text-ink-soft hover:border-accent hover:text-accent"
-              }`}
-            >
-              {l.name}
-            </button>
-          ))}
-        </div>
-        <p className="mt-2 text-xs text-ink-mute">{LEVEL_MAP[level].blurb}</p>
-      </div>
+      <LevelPicker value={level} onChange={setOverride} />
 
       {/* Drills for the chosen level */}
       {levelDrills.length === 0 ? (

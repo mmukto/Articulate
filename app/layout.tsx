@@ -10,6 +10,7 @@ import {
 } from "@/components/auth";
 import { CLERK_ENABLED } from "@/lib/clerk-config";
 import AllowanceMeter from "@/components/AllowanceMeter";
+import LevelChip from "@/components/LevelChip";
 import { SUPPORT_MAILTO } from "@/lib/site";
 import "./globals.css";
 
@@ -78,6 +79,7 @@ export default function RootLayout({
                   </SignUpButton>
                 </SignedOut>
                 <SignedIn>
+                  <LevelChip />
                   <AllowanceMeter />
                   <Link
                     href="/progress"

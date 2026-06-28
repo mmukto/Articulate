@@ -1,0 +1,80 @@
+"use client";
+
+import { useState } from "react";
+import {
+  LEVELS,
+  LEVEL_MAP,
+  readLevel,
+  hasChosenLevel,
+  type Level,
+} from "@/lib/levels";
+import { useMaybeUser } from "@/components/auth";
+import { LevelHelp } from "@/components/LevelHelp";
+
+// Reusable career-level switcher. Reads/writes the level in Clerk unsafeMetadata
+// (client-writable, like progress). Used on the module page (controlled via
+// `value`/`onChange` so drills re-filter instantly) and on the progress page
+// (uncontrolled). Includes the "Which level am I?" helper.
+export function LevelPicker({
+  value,
+  onChange,
+  heading,
+}: {
+  value?: Level;
+  onChange?: (level: Level) => void;
+  heading?: string;
+}) {
+  const { user } = useMaybeUser();
+  const [internal, setInternal] = useState<Level | null>(null);
+  const current = value ?? internal ?? readLevel(user?.unsafeMetadata);
+  const chosen = hasChosenLevel(user?.unsafeMetadata) || value != null || internal != null;
+  const [saving, setSaving] = useState(false);
+
+  async function pick(next: Level) {
+    setInternal(next);
+    onChange?.(next);
+    if (!user) return;
+    setSaving(true);
+    try {
+      await user.update({ unsafeMetadata: { ...(user.unsafeMetadata ?? {}), level: next } });
+    } catch {
+      /* offline / rate-limited — local state still reflects the choice */
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-ink/10 bg-white/50 p-4">
+      {chosen ? (
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-mute">
+          {heading ?? "Practicing as"}
+        </p>
+      ) : (
+        <p className="mb-2 text-sm font-medium text-accent">
+          Pick your career level so the drills and AI coaching match your world:
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        {LEVELS.map((l) => (
+          <button
+            key={l.id}
+            type="button"
+            onClick={() => pick(l.id)}
+            disabled={saving}
+            title={l.blurb}
+            className={`rounded-md border px-3 py-1.5 text-sm transition-colors disabled:opacity-60 ${
+              current === l.id
+                ? "border-accent bg-accent text-white"
+                : "border-ink/15 text-ink-soft hover:border-accent hover:text-accent"
+            }`}
+          >
+            {l.name}
+          </button>
+        ))}
+      </div>
+      <p className="mt-2 text-xs text-ink-mute">{LEVEL_MAP[current].blurb}</p>
+      <LevelHelp />
+    </div>
+  );
+}
