@@ -1,7 +1,7 @@
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { CLERK_ENABLED } from "./clerk-config";
 import { FREE_TIER, TIER_MAP, tierById, type Tier, type TierId } from "./tiers";
-import { DEFAULT_LEVEL, readLevel, type Level } from "./levels";
+import { DEFAULT_LEVEL, LEVEL_IDS, parseLevels, readLevel, type Level } from "./levels";
 
 // Server-authoritative subscription entitlements. The user's plan lives in Clerk
 // `privateMetadata.subscription` (server-only, never trusted from the client)
@@ -11,6 +11,9 @@ import { DEFAULT_LEVEL, readLevel, type Level } from "./levels";
 
 export interface Subscription {
   tier: TierId;
+  /** Career levels the user has paid for. Pricing is per level — the tier price
+   *  buys each level in this list (so all three levels cost 3× one level). */
+  levels?: Level[];
   /** Epoch ms when paid access lapses; after this the user reverts to Free. */
   expiresAt?: number;
   stripeCustomerId?: string;
@@ -24,6 +27,7 @@ export function readSubscription(privateMetadata: unknown): Subscription | null 
   if (!s || typeof s.tier !== "string") return null;
   return {
     tier: s.tier as TierId,
+    levels: Array.isArray(s.levels) ? parseLevels(s.levels) : undefined,
     expiresAt: typeof s.expiresAt === "number" ? s.expiresAt : undefined,
     stripeCustomerId:
       typeof s.stripeCustomerId === "string" ? s.stripeCustomerId : undefined,
@@ -33,12 +37,28 @@ export function readSubscription(privateMetadata: unknown): Subscription | null 
   };
 }
 
+/** True if the subscription is paid and still within its paid period. */
+function isActivePaid(sub: Subscription | null): boolean {
+  if (!sub || sub.tier === "free") return false;
+  if (sub.expiresAt && Date.now() > sub.expiresAt) return false;
+  return true;
+}
+
 /** Effective tier from raw private metadata — Free unless a paid plan is active. */
 export function effectiveTier(privateMetadata: unknown): Tier {
   const sub = readSubscription(privateMetadata);
-  if (!sub || sub.tier === "free") return FREE_TIER;
-  if (sub.expiresAt && Date.now() > sub.expiresAt) return FREE_TIER; // lapsed
-  return tierById(sub.tier);
+  return isActivePaid(sub) ? tierById(sub!.tier) : FREE_TIER;
+}
+
+/**
+ * Career levels the user has actually paid for (empty when on Free). A paid sub
+ * with no recorded levels is grandfathered to all levels (legacy / safety).
+ */
+export function effectiveLevels(privateMetadata: unknown): Level[] {
+  const sub = readSubscription(privateMetadata);
+  if (!isActivePaid(sub)) return [];
+  const lv = sub!.levels ?? [];
+  return lv.length > 0 ? lv : [...LEVEL_IDS];
 }
 
 // Comp accounts: emails/usernames listed in COMP_USER_EMAILS (server-only env,
@@ -75,6 +95,24 @@ export function tierForUser(user: ClerkUserLike): Tier {
   return effectiveTier(user.privateMetadata);
 }
 
+/** Career levels a full Clerk user can practice: all of them if comp, else paid. */
+export function levelsForUser(user: ClerkUserLike): Level[] {
+  if (isCompUser(user)) return [...LEVEL_IDS];
+  return effectiveLevels(user.privateMetadata);
+}
+
+/**
+ * The user's annual AI-feedback allowance. The per-tier budget is 1/3 of the
+ * per-level price, so a user who bought N levels (paying N× the price) gets N×
+ * the allowance. Free (and comp, who bypass the cap anyway) get one unit.
+ */
+export function aiBudgetUsdForUser(user: ClerkUserLike): number {
+  const tier = tierForUser(user);
+  const count = isCompUser(user) ? 1 : effectiveLevels(user.privateMetadata).length;
+  const budget = tier.aiBudgetUsd * Math.max(1, count);
+  return Math.round(budget * 100) / 100;
+}
+
 /** Effective tier for a given user id (one Clerk read). */
 export async function getUserTier(userId: string): Promise<Tier> {
   const client = await clerkClient();
@@ -100,17 +138,29 @@ export async function getUserLevel(userId: string): Promise<Level> {
   return readLevel(user.unsafeMetadata);
 }
 
-/** Effective tier + chosen level + comp flag in one Clerk read (AI routes). */
-export async function getUserTierAndLevel(
-  userId: string,
-): Promise<{ tier: Tier; level: Level; comp: boolean }> {
+export interface Entitlements {
+  tier: Tier;
+  /** Career levels the user has paid for (all of them for comp accounts). */
+  levels: Level[];
+  comp: boolean;
+}
+
+/** Tier + purchased levels + comp flag in one Clerk read (AI routes, gating). */
+export async function getUserEntitlements(userId: string): Promise<Entitlements> {
   const client = await clerkClient();
   const user = await client.users.getUser(userId);
-  return {
-    tier: tierForUser(user),
-    level: readLevel(user.unsafeMetadata),
-    comp: isCompUser(user),
-  };
+  return { tier: tierForUser(user), levels: levelsForUser(user), comp: isCompUser(user) };
+}
+
+/**
+ * Entitlements for the current request. Free with no levels when auth is off or
+ * no one is signed in — gating then shows only the Free sampler.
+ */
+export async function getCurrentEntitlements(): Promise<Entitlements> {
+  if (!CLERK_ENABLED) return { tier: FREE_TIER, levels: [], comp: false };
+  const { userId } = await auth();
+  if (!userId) return { tier: FREE_TIER, levels: [], comp: false };
+  return getUserEntitlements(userId);
 }
 
 /** Career level for the current request (default when auth off / signed out). */

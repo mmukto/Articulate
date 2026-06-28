@@ -52,21 +52,26 @@ export async function POST(req: NextRequest) {
   }
 
   const tier = tierById(sub.tier);
-  const price = tier.priceUsd;
+  // Pricing is per level, so the annual price and the drill total both scale with
+  // how many levels the user bought.
+  const levelCount = Math.max(1, sub.levels?.length ?? 1);
+  const price = round2(tier.priceUsd * levelCount);
+  const drillTotal = tier.drillTotal * levelCount;
   const aiCostUsd = round2(readSpentUsd(user.privateMetadata));
   const drillsCompleted = countDrillsCompleted(user.unsafeMetadata);
   const drillCharge = Math.min(
     price,
-    tier.drillTotal > 0 ? round2((drillsCompleted / tier.drillTotal) * price) : 0,
+    drillTotal > 0 ? round2((drillsCompleted / drillTotal) * price) : 0,
   );
   const refund = Math.max(0, round2(price - aiCostUsd - drillCharge));
 
   const breakdown = {
     tierName: tier.name,
+    levelCount,
     price,
     aiCostUsd,
     drillsCompleted,
-    drillTotal: tier.drillTotal,
+    drillTotal,
     drillCharge,
     refund,
   };

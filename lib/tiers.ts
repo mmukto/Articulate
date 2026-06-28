@@ -96,6 +96,18 @@ export function drillsPerModule(tier: Tier): number {
   return Math.ceil(tier.drillTotal / MODULE_COUNT);
 }
 
+/** Per-module drills the Free tier unlocks — the sampler shown on every level. */
+export const FREE_DRILLS_PER_MODULE = Math.ceil(FREE_TIER.drillTotal / MODULE_COUNT);
+
+/**
+ * Drills unlocked per module *at a given career level*. Pricing is per level:
+ * a level the user has purchased unlocks the full tier count; any other level
+ * still shows the Free sampler so they can try it before buying.
+ */
+export function unlockedPerModule(tier: Tier, levelPurchased: boolean): number {
+  return levelPurchased ? drillsPerModule(tier) : FREE_DRILLS_PER_MODULE;
+}
+
 /** Resolve a tier id to a Tier, falling back to Free for unknown/empty ids. */
 export function tierById(id: string | null | undefined): Tier {
   return (id && TIER_MAP[id as TierId]) || FREE_TIER;

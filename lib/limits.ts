@@ -1,6 +1,7 @@
 import { clerkClient } from "@clerk/nextjs/server";
 import type { Usage } from "./feedback";
-import { isCompUser, tierForUser } from "./entitlements";
+import { aiBudgetUsdForUser, isCompUser, levelsForUser, tierForUser } from "./entitlements";
+import { readLevel, type Level } from "./levels";
 
 // Per-user AI-feedback guardrails.
 //
@@ -88,7 +89,7 @@ export async function checkAccess(userId: string): Promise<AccessGate> {
   const existingMetadata = (user.privateMetadata ?? {}) as Record<string, unknown>;
   const tier = tierForUser(user);
   const comp = isCompUser(user); // comp accounts bypass the cap entirely
-  const budgetUsd = tier.aiBudgetUsd;
+  const budgetUsd = aiBudgetUsdForUser(user); // scales with levels purchased
   const now = Date.now();
 
   let meter = readMeter(existingMetadata);
@@ -135,6 +136,11 @@ export async function recordSpend(
 export interface UsageSummary {
   tierId: string;
   tierName: string;
+  /** Levels the user has paid for (drives the pricing-page selection). */
+  levels: Level[];
+  levelCount: number;
+  /** The user's currently chosen career level (preference, not entitlement). */
+  currentLevel: Level;
   spentUsd: number;
   budgetUsd: number;
   percentUsed: number; // 0–100, rounded
@@ -145,6 +151,7 @@ export async function getUsageSummary(userId: string): Promise<UsageSummary> {
   const client = await clerkClient();
   const user = await client.users.getUser(userId);
   const tier = tierForUser(user);
+  const levels = levelsForUser(user);
   const meter = readMeter(user.privateMetadata);
   const now = Date.now();
 
@@ -152,11 +159,14 @@ export async function getUsageSummary(userId: string): Promise<UsageSummary> {
   const rolled = !meter || now - meter.windowStartedAt > WINDOW_MS;
   const spentUsd = rolled ? 0 : meter!.spentUsd;
   const windowStartedAt = rolled ? now : meter!.windowStartedAt;
-  const budgetUsd = tier.aiBudgetUsd;
+  const budgetUsd = aiBudgetUsdForUser(user);
 
   return {
     tierId: tier.id,
     tierName: tier.name,
+    levels,
+    levelCount: levels.length,
+    currentLevel: readLevel(user.unsafeMetadata),
     spentUsd: round6(spentUsd),
     budgetUsd,
     percentUsed: Math.min(100, Math.round((spentUsd / budgetUsd) * 100)),

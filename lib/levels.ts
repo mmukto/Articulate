@@ -46,6 +46,24 @@ export const LEVEL_MAP: Record<Level, LevelInfo> = LEVELS.reduce(
   {} as Record<Level, LevelInfo>,
 );
 
+/** All level ids in canonical (early → senior) order. */
+export const LEVEL_IDS: Level[] = LEVELS.map((l) => l.id);
+
+/**
+ * Parse a list of purchased levels from an array or a comma-separated string
+ * (as stored in Clerk metadata / Stripe metadata). Invalid ids are dropped and
+ * the result is de-duped and returned in canonical order.
+ */
+export function parseLevels(input: unknown): Level[] {
+  const raw = Array.isArray(input)
+    ? input
+    : typeof input === "string"
+      ? input.split(",")
+      : [];
+  const seen = new Set<string>(raw.map((r) => String(r).trim()));
+  return LEVEL_IDS.filter((id) => seen.has(id));
+}
+
 // Existing content is senior-pitched and existing users practiced it, so an
 // unset level defaults to senior (back-compat). Onboarding nudges users to pick.
 export const DEFAULT_LEVEL: Level = "senior";

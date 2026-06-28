@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { SignedIn, SignedOut, SignInButton, SignUpButton } from "@/components/auth";
 import { MODULES, MODULE_MAP } from "@/lib/course";
 import { ModuleDrills } from "@/components/ModuleDrills";
-import { getCurrentTier } from "@/lib/entitlements";
-import { drillsPerModule } from "@/lib/tiers";
+import { getCurrentEntitlements } from "@/lib/entitlements";
+import { drillsPerModule, FREE_DRILLS_PER_MODULE } from "@/lib/tiers";
 
 export function generateStaticParams() {
   return MODULES.map((m) => ({ slug: m.slug }));
@@ -27,10 +27,11 @@ export default async function ModulePage({ params }: { params: { slug: string } 
   const prev = idx > 0 ? MODULES[idx - 1] : null;
   const next = idx < MODULES.length - 1 ? MODULES[idx + 1] : null;
 
-  // Tier governs how many drills unlock per level (server-authoritative); the
-  // client component filters by the user's chosen career level.
-  const tier = await getCurrentTier();
-  const tierCount = drillsPerModule(tier);
+  // Pricing is per level (server-authoritative): a level the user has paid for
+  // unlocks the full tier count; other levels show the Free sampler. The client
+  // filters by the chosen career level and locks the rest.
+  const ent = await getCurrentEntitlements();
+  const tierCount = drillsPerModule(ent.tier);
 
   return (
     <article className="space-y-12">
@@ -143,7 +144,13 @@ export default async function ModulePage({ params }: { params: { slug: string } 
           </p>
         </div>
         <SignedIn>
-          <ModuleDrills module={module} tierCount={tierCount} tierName={tier.name} />
+          <ModuleDrills
+            module={module}
+            tierCount={tierCount}
+            freeCount={FREE_DRILLS_PER_MODULE}
+            tierName={ent.tier.name}
+            purchasedLevels={ent.levels}
+          />
         </SignedIn>
         <SignedOut>
           <div className="rounded-xl border border-ink/10 bg-white/60 p-8 text-center">

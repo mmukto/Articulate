@@ -3,12 +3,16 @@ import { auth, clerkClient } from "@clerk/nextjs/server";
 import { CLERK_ENABLED } from "@/lib/clerk-config";
 import { getStripe, STRIPE_ENABLED, priceIdForTier } from "@/lib/stripe";
 import { tierById } from "@/lib/tiers";
-import { readSubscription } from "@/lib/entitlements";
+import { parseLevels } from "@/lib/levels";
+import { readSubscription, setUserSubscription } from "@/lib/entitlements";
 
 export const runtime = "nodejs";
 
-// Create a Stripe Checkout Session for an annual subscription to a paid tier and
-// return its URL. The client redirects the browser there.
+// Start (or change) an annual subscription. Pricing is PER LEVEL: the chosen
+// tier's price is billed once per selected career level (quantity = number of
+// levels), so all three levels cost 3× one level. For a first purchase we open
+// Stripe Checkout; if the user already has an active subscription we update it
+// in place (new tier/levels, prorated) and return them to the pricing page.
 export async function POST(req: NextRequest) {
   if (!CLERK_ENABLED) {
     return NextResponse.json({ error: "Sign-in is required to subscribe." }, { status: 400 });
@@ -33,26 +37,69 @@ export async function POST(req: NextRequest) {
   if (tier.id === "free" || !priceId) {
     return NextResponse.json({ error: "Choose a paid plan to continue." }, { status: 400 });
   }
+  const levels = parseLevels((body as { levels?: unknown })?.levels);
+  if (levels.length === 0) {
+    return NextResponse.json(
+      { error: "Pick at least one career level to subscribe." },
+      { status: 400 },
+    );
+  }
+  const quantity = levels.length;
+  const levelsCsv = levels.join(",");
+  const metadata = { userId, tier: tier.id, levels: levelsCsv };
 
   const stripe = getStripe();
   const client = await clerkClient();
   const user = await client.users.getUser(userId);
   const sub = readSubscription(user.privateMetadata);
+  const origin = req.headers.get("origin") ?? new URL(req.url).origin;
+
+  // Existing active subscription → update it in place (change tier/levels) so we
+  // never stack duplicate subscriptions. The saved card is charged any proration.
+  const hasActive =
+    sub?.stripeSubscriptionId &&
+    sub.tier !== "free" &&
+    (!sub.expiresAt || sub.expiresAt > Date.now());
+  if (hasActive) {
+    try {
+      const existing = await stripe.subscriptions.retrieve(sub!.stripeSubscriptionId!);
+      const itemId = existing.items.data[0]?.id;
+      await stripe.subscriptions.update(sub!.stripeSubscriptionId!, {
+        items: [{ id: itemId, price: priceId, quantity }],
+        proration_behavior: "create_prorations",
+        metadata,
+      });
+      // Reflect immediately; the subscription.updated webhook also confirms.
+      await setUserSubscription(userId, {
+        tier: tier.id,
+        levels,
+        expiresAt: sub!.expiresAt,
+        stripeCustomerId: sub!.stripeCustomerId,
+        stripeSubscriptionId: sub!.stripeSubscriptionId,
+      });
+      return NextResponse.json({ url: `${origin}/pricing?status=success` });
+    } catch (err) {
+      console.error("[checkout] in-place update failed:", err);
+      return NextResponse.json(
+        { error: "Couldn't update your subscription. Please contact support." },
+        { status: 500 },
+      );
+    }
+  }
+
   const email =
     user.emailAddresses.find((e) => e.id === user.primaryEmailAddressId)?.emailAddress ??
     user.emailAddresses[0]?.emailAddress;
 
-  const origin = req.headers.get("origin") ?? new URL(req.url).origin;
-
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
-    line_items: [{ price: priceId, quantity: 1 }],
+    line_items: [{ price: priceId, quantity }],
     client_reference_id: userId,
     // Reuse an existing customer if we have one; otherwise prefill the email.
     customer: sub?.stripeCustomerId,
     customer_email: sub?.stripeCustomerId ? undefined : email,
-    metadata: { userId, tier: tier.id },
-    subscription_data: { metadata: { userId, tier: tier.id } },
+    metadata,
+    subscription_data: { metadata },
     allow_promotion_codes: true,
     success_url: `${origin}/pricing?status=success`,
     cancel_url: `${origin}/pricing?status=cancel`,

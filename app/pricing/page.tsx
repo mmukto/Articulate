@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { TIERS, drillsPerModule, type TierId } from "@/lib/tiers";
+import { LEVELS, type Level } from "@/lib/levels";
 import { SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/lib/site";
 
 type CancelBreakdown = {
   tierName: string;
+  levelCount: number;
   price: number;
   aiCostUsd: number;
   drillsCompleted: number;
@@ -15,8 +17,13 @@ type CancelBreakdown = {
   refund: number;
 };
 
+const sameLevels = (a: Level[], b: Level[]) =>
+  a.length === b.length && a.every((x) => b.includes(x));
+
 export default function PricingPage() {
   const [currentTier, setCurrentTier] = useState<TierId | null>(null);
+  const [ownedLevels, setOwnedLevels] = useState<Level[]>([]);
+  const [selectedLevels, setSelectedLevels] = useState<Level[]>(["senior"]);
   const [signedIn, setSignedIn] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -36,10 +43,21 @@ export default function PricingPage() {
         if (d?.enabled) {
           setSignedIn(true);
           setCurrentTier(d.tierId as TierId);
+          const owned = (Array.isArray(d.levels) ? d.levels : []) as Level[];
+          setOwnedLevels(owned);
+          // Preselect the levels they own, or their current career level.
+          setSelectedLevels(owned.length > 0 ? owned : [(d.currentLevel as Level) ?? "senior"]);
         }
       })
       .catch(() => {});
   }, []);
+
+  function toggleLevel(id: Level) {
+    setSelectedLevels((prev) =>
+      prev.includes(id) ? prev.filter((l) => l !== id) : [...prev, id],
+    );
+  }
+  const levelCount = selectedLevels.length;
 
   async function post(url: string, body?: unknown): Promise<void> {
     const res = await fetch(url, {
@@ -53,10 +71,14 @@ export default function PricingPage() {
   }
 
   async function subscribe(tier: TierId) {
+    if (selectedLevels.length === 0) {
+      setError("Pick at least one career level first.");
+      return;
+    }
     setError(null);
     setBusy(tier);
     try {
-      await post("/api/billing/checkout", { tier });
+      await post("/api/billing/checkout", { tier, levels: selectedLevels });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't start checkout.");
       setBusy(null);
@@ -121,9 +143,52 @@ export default function PricingPage() {
         </h1>
         <p className="mx-auto mt-2 max-w-xl text-ink-soft">
           All plans include every lesson and the AI coach. Higher plans unlock more drills
-          to practice in each of the 10 modules. Billed annually.
+          per module. <span className="font-medium text-ink">Pricing is per career level</span> —
+          the price below is for one level, so all three levels cost 3×. Billed annually.
         </p>
       </header>
+
+      {/* Level chooser — the price below multiplies by how many you pick. */}
+      <section className="rounded-xl border border-ink/10 bg-white/50 p-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="font-serif text-lg font-semibold tracking-tight">
+            Which level(s) do you want to train?
+          </h2>
+          <span className="text-sm text-ink-mute">
+            {levelCount === 0
+              ? "Pick at least one"
+              : `${levelCount} selected — prices below × ${levelCount}`}
+          </span>
+        </div>
+        <p className="mt-1 text-sm text-ink-soft">
+          Each plan is billed once per level you choose. You can practice a level’s full drill
+          set once it’s on your plan; switch which level you’re practicing anytime.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {LEVELS.map((l) => {
+            const on = selectedLevels.includes(l.id);
+            const owned = ownedLevels.includes(l.id);
+            return (
+              <button
+                key={l.id}
+                type="button"
+                onClick={() => toggleLevel(l.id)}
+                title={l.blurb}
+                aria-pressed={on}
+                className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${
+                  on
+                    ? "border-accent bg-accent text-white"
+                    : "border-ink/15 text-ink-soft hover:border-accent hover:text-accent"
+                }`}
+              >
+                {on ? "✓ " : ""}
+                {l.name}
+                {owned ? <span className={on ? "text-white/80" : "text-ink-mute"}> · owned</span> : null}
+              </button>
+            );
+          })}
+        </div>
+      </section>
 
       {notice ? (
         <div className="rounded-lg border border-accent/30 bg-accent-wash/40 px-4 py-3 text-sm text-ink-soft">
@@ -139,7 +204,8 @@ export default function PricingPage() {
       {cancelData ? (
         <div className="rounded-xl border border-red-300 bg-red-50 p-5 text-sm">
           <h3 className="font-serif text-lg font-semibold text-ink">
-            Cancel your {cancelData.tierName} plan?
+            Cancel your {cancelData.tierName} plan
+            {cancelData.levelCount > 1 ? ` (${cancelData.levelCount} levels)` : ""}?
           </h3>
           <p className="mt-1 text-ink-soft">
             Cancellation is immediate. Your refund is your annual price minus the AI
@@ -186,6 +252,9 @@ export default function PricingPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {TIERS.map((tier) => {
           const isCurrent = currentTier === tier.id;
+          // Owns this exact tier *and* the same set of levels → nothing to change.
+          const isExactCurrent =
+            isCurrent && tier.priceUsd > 0 && sameLevels(selectedLevels, ownedLevels);
           const perModule = drillsPerModule(tier);
           return (
             <div
@@ -209,22 +278,51 @@ export default function PricingPage() {
                   {tier.priceUsd === 0 ? "Free" : `$${tier.priceUsd.toFixed(2)}`}
                 </span>
                 {tier.priceUsd > 0 ? (
-                  <span className="text-sm text-ink-mute"> /year</span>
+                  <span className="text-sm text-ink-mute"> / level / year</span>
                 ) : null}
               </div>
+              {tier.priceUsd > 0 && levelCount > 1 ? (
+                <p className="mt-1 text-xs text-ink-mute">
+                  ${(tier.priceUsd * levelCount).toFixed(2)}/year for {levelCount} levels
+                </p>
+              ) : null}
               <p className="mt-2 text-sm text-ink-soft">{tier.blurb}</p>
               <div className="mt-3 text-sm text-ink">
                 <span className="font-semibold">{tier.drillTotal}</span> drills
-                <span className="text-ink-mute"> · {perModule}/module</span>
+                <span className="text-ink-mute"> / level · {perModule}/module</span>
               </div>
 
-              <div className="mt-auto pt-5">
-                {isCurrent ? (
-                  <div className="space-y-2">
-                    <div className="rounded-md border border-ink/15 px-4 py-2 text-center text-sm font-medium text-ink-mute">
-                      Current plan
-                    </div>
-                    {tier.priceUsd > 0 ? (
+              <div className="mt-auto space-y-2 pt-5">
+                {tier.priceUsd === 0 ? (
+                  <div className="rounded-md border border-ink/10 px-4 py-2 text-center text-sm text-ink-mute">
+                    {isCurrent ? "Current plan" : "Included"}
+                  </div>
+                ) : (
+                  <>
+                    {isExactCurrent ? (
+                      <div className="rounded-md border border-ink/15 px-4 py-2 text-center text-sm font-medium text-ink-mute">
+                        Current plan
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => subscribe(tier.id)}
+                        disabled={busy === tier.id || levelCount === 0}
+                        className="w-full rounded-md bg-accent px-4 py-2 text-sm font-medium text-white shadow-sm transition-transform hover:-translate-y-0.5 disabled:opacity-60"
+                      >
+                        {busy === tier.id
+                          ? "Starting…"
+                          : levelCount === 0
+                            ? "Pick a level above"
+                            : `${
+                                isCurrent
+                                  ? "Update"
+                                  : currentTier && currentTier !== "free"
+                                    ? `Switch to ${tier.name}`
+                                    : `Choose ${tier.name}`
+                              } — $${(tier.priceUsd * levelCount).toFixed(2)}`}
+                      </button>
+                    )}
+                    {isCurrent ? (
                       <div className="space-y-1 text-center">
                         <button
                           onClick={openCancel}
@@ -242,23 +340,7 @@ export default function PricingPage() {
                         </button>
                       </div>
                     ) : null}
-                  </div>
-                ) : tier.priceUsd === 0 ? (
-                  <div className="rounded-md border border-ink/10 px-4 py-2 text-center text-sm text-ink-mute">
-                    Included
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => subscribe(tier.id)}
-                    disabled={busy === tier.id}
-                    className="w-full rounded-md bg-accent px-4 py-2 text-sm font-medium text-white shadow-sm transition-transform hover:-translate-y-0.5 disabled:opacity-60"
-                  >
-                    {busy === tier.id
-                      ? "Starting…"
-                      : currentTier && currentTier !== "free"
-                        ? `Switch to ${tier.name}`
-                        : `Choose ${tier.name}`}
-                  </button>
+                  </>
                 )}
               </div>
             </div>

@@ -4,9 +4,9 @@ import { getDrill } from "@/lib/course";
 import { gradeSpoken } from "@/lib/feedback";
 import { CLERK_ENABLED } from "@/lib/clerk-config";
 import { checkAccess, recordSpend, estimateCostUsd, type AccessGate } from "@/lib/limits";
-import { getUserTierAndLevel } from "@/lib/entitlements";
-import { drillsPerModule } from "@/lib/tiers";
-import type { Level } from "@/lib/levels";
+import { getUserEntitlements } from "@/lib/entitlements";
+import { unlockedPerModule } from "@/lib/tiers";
+import { LEVEL_MAP, type Level } from "@/lib/levels";
 
 // Audio coaching can take a little longer than text — give it room.
 export const maxDuration = 60;
@@ -68,25 +68,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unknown drill." }, { status: 404 });
   }
 
-  // Server-authoritative gates (never trust the client): the drill must match
-  // the user's career level, and its position within that level must be within
-  // their plan.
+  // Coaching is calibrated to the drill's own career level.
+  const level: Level = found.level;
+
+  // Server-authoritative gate (never trust the client): pricing is per level —
+  // a level the user has paid for unlocks their full tier count; any other level
+  // exposes only the Free sampler.
   let gate: AccessGate | null = null;
-  let level: Level = "senior";
   if (userId) {
-    const ctx = await getUserTierAndLevel(userId);
-    level = ctx.level;
+    const ent = await getUserEntitlements(userId);
     // Comp/owner accounts have full access to every drill at every level.
-    if (!ctx.comp) {
-      if (found.level !== level) {
+    if (!ent.comp) {
+      const purchased = ent.levels.includes(found.level);
+      const allowed = unlockedPerModule(ent.tier, purchased);
+      if (found.levelIndex >= allowed) {
         return NextResponse.json(
-          { error: "That drill is for a different career level. Switch your level to practice it." },
-          { status: 403 },
-        );
-      }
-      if (found.levelIndex >= drillsPerModule(ctx.tier)) {
-        return NextResponse.json(
-          { error: "This drill is part of a higher plan. Upgrade to unlock it." },
+          {
+            error: purchased
+              ? "This drill is part of a higher plan. Upgrade to unlock it."
+              : `This drill is in the ${LEVEL_MAP[found.level].name} level. Unlock that level on the Plans page to practice it.`,
+          },
           { status: 403 },
         );
       }
