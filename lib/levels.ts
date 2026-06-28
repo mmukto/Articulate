@@ -64,9 +64,11 @@ export function parseLevels(input: unknown): Level[] {
   return LEVEL_IDS.filter((id) => seen.has(id));
 }
 
-// Existing content is senior-pitched and existing users practiced it, so an
-// unset level defaults to senior (back-compat). Onboarding nudges users to pick.
-export const DEFAULT_LEVEL: Level = "senior";
+// New users default to Early career (most learners start here); they can switch
+// anytime, and onboarding nudges them to pick. NOTE: this is the *user's* default
+// level only — untagged legacy drills are still senior-pitched content (see
+// `d.level ?? "senior"` in lib/course.ts), which is a separate concern.
+export const DEFAULT_LEVEL: Level = "early";
 
 export function levelById(id: string | null | undefined): Level {
   return id && id in LEVEL_MAP ? (id as Level) : DEFAULT_LEVEL;

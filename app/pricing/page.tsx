@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { SignInButton, SignUpButton } from "@/components/auth";
 import { TIERS, drillsPerModule, tierById, type TierId } from "@/lib/tiers";
-import { LEVELS, LEVEL_MAP, parseLevels, type Level } from "@/lib/levels";
+import { LEVELS, LEVEL_MAP, DEFAULT_LEVEL, parseLevels, type Level } from "@/lib/levels";
 import { SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/lib/site";
 
 type CancelBreakdown = {
@@ -23,7 +23,7 @@ const sameLevels = (a: Level[], b: Level[]) =>
 export default function PricingPage() {
   const [currentTier, setCurrentTier] = useState<TierId | null>(null);
   const [ownedLevels, setOwnedLevels] = useState<Level[]>([]);
-  const [selectedLevels, setSelectedLevels] = useState<Level[]>(["senior"]);
+  const [selectedLevels, setSelectedLevels] = useState<Level[]>([DEFAULT_LEVEL]);
   const [signedIn, setSignedIn] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +53,7 @@ export default function PricingPage() {
         const owned = (Array.isArray(d.levels) ? d.levels : []) as Level[];
         setOwnedLevels(owned);
         // Preselect the levels they own, or their current career level.
-        setSelectedLevels(owned.length > 0 ? owned : [(d.currentLevel as Level) ?? "senior"]);
+        setSelectedLevels(owned.length > 0 ? owned : [(d.currentLevel as Level) ?? DEFAULT_LEVEL]);
         return d as { tierId: TierId };
       } catch {
         return null;
