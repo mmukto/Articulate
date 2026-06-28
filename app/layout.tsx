@@ -10,6 +10,7 @@ import {
 } from "@/components/auth";
 import { CLERK_ENABLED } from "@/lib/clerk-config";
 import AllowanceMeter from "@/components/AllowanceMeter";
+import { SUPPORT_MAILTO } from "@/lib/site";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -90,9 +91,14 @@ export default function RootLayout({
           </header>
           <main className="mx-auto max-w-4xl px-6 py-10">{children}</main>
           <footer className="border-t border-ink/10">
-            <div className="mx-auto max-w-4xl px-6 py-6 text-xs text-ink-mute">
-              Articulate · AI-coached practice for executive communication. Feedback is
-              AI-generated and meant as practice, not gospel.
+            <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 px-6 py-6 text-xs text-ink-mute">
+              <span>
+                Articulate · AI-coached practice for executive communication. Feedback is
+                AI-generated and meant as practice, not gospel.
+              </span>
+              <a href={SUPPORT_MAILTO} className="whitespace-nowrap transition-colors hover:text-accent">
+                Contact support
+              </a>
             </div>
           </footer>
         </body>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { TIERS, drillsPerModule, type TierId } from "@/lib/tiers";
+import { SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/lib/site";
 
 export default function PricingPage() {
   const [currentTier, setCurrentTier] = useState<TierId | null>(null);
@@ -170,7 +171,10 @@ export default function PricingPage() {
 
       <p className="text-center text-xs text-ink-mute">
         Payments are processed securely by Stripe. Subscriptions renew annually; cancel
-        anytime from “Manage or cancel.”
+        anytime from “Manage or cancel.” Questions?{" "}
+        <a href={SUPPORT_MAILTO} className="text-accent hover:underline">
+          {SUPPORT_EMAIL}
+        </a>
       </p>
     </div>
   );
