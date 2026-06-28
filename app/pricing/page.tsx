@@ -82,6 +82,13 @@ export default function PricingPage() {
               : "Payment received — your plan is taking a moment to activate. Refresh in a few seconds.",
           );
         }
+      } else if (d && d.tierId === "free") {
+        // Self-heal: a past purchase may never have been recorded (missed
+        // webhook). Recover it from Stripe by email, then reload.
+        const r = await fetch("/api/billing/sync", { method: "POST" })
+          .then((res) => res.json())
+          .catch(() => null);
+        if (!cancelled && r?.ok) await load();
       }
     })();
 
