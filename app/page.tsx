@@ -18,9 +18,8 @@ export default function HomePage() {
           <span className="italic text-accent">clearly</span>, the first time.
         </h1>
         <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink-soft">
-          A practical course in executive communication and clarity. You read short
-          lessons, then practice on realistic drills — and an AI coach scores every
-          response against a sharp rubric, rewrites it stronger, and tells you exactly
+          Short lessons, then realistic drills — and an AI coach that scores every
+          answer against a sharp rubric, rewrites it stronger, and shows you exactly
           what to fix.
         </p>
         <div className="mt-7 flex flex-wrap items-center gap-3">
@@ -45,8 +44,8 @@ export default function HomePage() {
           You'll be graded on six things
         </h2>
         <p className="mt-2 max-w-2xl text-ink-soft">
-          Every response you write gets a score on each dimension, plus specific notes.
-          The same rubric a strong editor would apply.
+          Every answer is scored on each dimension, with specific notes — the rubric a
+          sharp editor would use.
         </p>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {DIMENSIONS.map((d) => (
@@ -69,12 +68,11 @@ export default function HomePage() {
           The curriculum
         </h2>
         <p className="mt-2 max-w-2xl text-ink-soft">
-          Ten modules, each with a short lesson, before/after examples, and a deep
-          bank of AI-coached practice drills. Every drill comes in{" "}
-          <span className="font-medium text-ink">three career levels — Early, Mid,
-          and Senior</span> — so the scenarios and coaching match where you are. Pick
-          your level at sign-up (change it anytime); work through the modules in order
-          or jump to a weak spot.
+          Ten modules. Each pairs a short lesson and before/after examples with a deep
+          bank of AI-coached drills, written for{" "}
+          <span className="font-medium text-ink">three career levels — Early, Mid, and
+          Executive</span> — so every scenario meets you where you work. Pick your level
+          when you join; change it anytime. Go in order, or straight to a weak spot.
         </p>
         <SignedIn>
           <CourseProgress keys={ALL_DRILL_KEYS} />

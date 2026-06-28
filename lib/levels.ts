@@ -31,10 +31,10 @@ export const LEVELS: LevelInfo[] = [
   },
   {
     id: "senior",
-    name: "Senior",
-    blurb: "Executive / reports to C-suite — board narratives, strategy, presence.",
+    name: "Executive",
+    blurb: "Reports to or sits with the C-suite — board narratives, strategy, presence.",
     coachNote:
-      "a senior leader who reports to or regularly interacts with the C-suite. Pitch feedback to their world — board-ready narratives, strategy, high-stakes decisions, and executive presence.",
+      "an executive who reports to or regularly interacts with the C-suite. Pitch feedback to their world — board-ready narratives, strategy, high-stakes decisions, and executive presence.",
   },
 ];
 

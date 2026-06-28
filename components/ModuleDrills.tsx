@@ -48,8 +48,8 @@ export function ModuleDrills({
       {/* Drills for the chosen level */}
       {levelDrills.length === 0 ? (
         <div className="rounded-xl border border-dashed border-ink/15 bg-white/40 p-6 text-sm text-ink-soft">
-          More <span className="font-medium">{levelName}</span> drills are coming soon. For
-          now, switch to <span className="font-medium">Senior</span> for the full library.
+          More <span className="font-medium">{levelName}</span> drills for this module are
+          on the way.
         </div>
       ) : (
         <>

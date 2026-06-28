@@ -52,7 +52,7 @@ export function LevelPicker({
         </p>
       ) : (
         <p className="mb-2 text-sm font-medium text-accent">
-          Pick your career level so the drills and AI coaching match your world:
+          Pick your level — drills and coaching calibrate to match:
         </p>
       )}
       <div className="flex flex-wrap gap-2">
