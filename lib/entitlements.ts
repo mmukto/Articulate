@@ -51,14 +51,25 @@ export function effectiveTier(privateMetadata: unknown): Tier {
 }
 
 /**
- * Career levels the user has actually paid for (empty when on Free). A paid sub
- * with no recorded levels is grandfathered to all levels (legacy / safety).
+ * Career levels the user has actually paid for (empty when on Free).
+ *
+ * Fails CLOSED: pricing is strictly per purchased level, so a paid subscription
+ * must carry an explicit, non-empty `levels` list. If none is recorded (legacy
+ * or corrupt data), we grant NOTHING beyond the free sampler rather than
+ * unlocking every level — that would let one payment reach all three levels.
+ * Such a subscription self-heals on the next webhook or pricing-page recover.
  */
 export function effectiveLevels(privateMetadata: unknown): Level[] {
   const sub = readSubscription(privateMetadata);
   if (!isActivePaid(sub)) return [];
   const lv = sub!.levels ?? [];
-  return lv.length > 0 ? lv : [...LEVEL_IDS];
+  if (lv.length === 0) {
+    console.warn(
+      "[entitlements] active paid subscription has no recorded levels — failing closed",
+    );
+    return [];
+  }
+  return lv;
 }
 
 // Comp accounts: emails/usernames listed in COMP_USER_EMAILS (server-only env,
