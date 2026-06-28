@@ -1,13 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { ClerkProvider } from "@clerk/nextjs";
-import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  SignUpButton,
-  UserButton,
-} from "@/components/auth";
+import { SignedIn, SignedOut, SignInButton, UserButton } from "@/components/auth";
 import { CLERK_ENABLED } from "@/lib/clerk-config";
 import AllowanceMeter from "@/components/AllowanceMeter";
 import LevelChip from "@/components/LevelChip";
@@ -72,11 +66,14 @@ export default function RootLayout({
                       Sign in
                     </button>
                   </SignInButton>
-                  <SignUpButton mode="modal">
-                    <button className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-transform hover:-translate-y-0.5">
-                      Sign up
-                    </button>
-                  </SignUpButton>
+                  {/* Send sign-up through the plans page first, so people choose
+                      a plan (or Free) before creating an account. */}
+                  <Link
+                    href="/pricing"
+                    className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-transform hover:-translate-y-0.5"
+                  >
+                    Sign up
+                  </Link>
                 </SignedOut>
                 <SignedIn>
                   <LevelChip />

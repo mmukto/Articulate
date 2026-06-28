@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { SignInButton, SignUpButton } from "@/components/auth";
 import { TIERS, drillsPerModule, tierById, type TierId } from "@/lib/tiers";
-import { LEVELS, LEVEL_MAP, type Level } from "@/lib/levels";
+import { LEVELS, LEVEL_MAP, parseLevels, type Level } from "@/lib/levels";
 import { SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/lib/site";
 
 type CancelBreakdown = {
@@ -34,6 +34,8 @@ export default function PricingPage() {
     const params = new URLSearchParams(window.location.search);
     const status = params.get("status");
     const sessionId = params.get("session_id");
+    const intent = params.get("intent"); // tier to resume after signup
+    const intentLevels = parseLevels(params.get("levels"));
     if (status === "success") {
       setNotice("Thanks! Your subscription is active — updating your plan…");
     } else if (status === "cancel") {
@@ -82,6 +84,16 @@ export default function PricingPage() {
               : "Payment received — your plan is taking a moment to activate. Refresh in a few seconds.",
           );
         }
+      } else if (intent && d) {
+        // Just signed up after picking a paid plan → resume to checkout. Clean
+        // the URL first so a refresh/back doesn't re-trigger it.
+        const validTier = TIERS.find((t) => t.id === intent && t.priceUsd > 0);
+        window.history.replaceState({}, "", "/pricing");
+        if (validTier && !cancelled) {
+          const lv = intentLevels.length > 0 ? intentLevels : selectedLevels;
+          setSelectedLevels(lv);
+          await subscribe(validTier.id, lv);
+        }
       } else if (d && d.tierId === "free") {
         // Self-heal: a past purchase may never have been recorded (missed
         // webhook). Recover it from Stripe by email, then reload.
@@ -115,19 +127,26 @@ export default function PricingPage() {
     window.location.href = data.url as string;
   }
 
-  async function subscribe(tier: TierId) {
-    if (selectedLevels.length === 0) {
+  async function subscribe(tier: TierId, levels: Level[] = selectedLevels) {
+    if (levels.length === 0) {
       setError("Pick at least one career level first.");
       return;
     }
     setError(null);
     setBusy(tier);
     try {
-      await post("/api/billing/checkout", { tier, levels: selectedLevels });
+      await post("/api/billing/checkout", { tier, levels });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't start checkout.");
       setBusy(null);
     }
+  }
+
+  // After a signed-out user picks a paid plan and signs up, Clerk redirects back
+  // here with ?intent=<tier>&levels=… — resume straight to checkout.
+  function intentUrl(tier: TierId): string {
+    const lv = encodeURIComponent(selectedLevels.join(","));
+    return `/pricing?intent=${tier}&levels=${lv}`;
   }
 
   async function manage() {
@@ -367,7 +386,27 @@ export default function PricingPage() {
               </div>
 
               <div className="mt-auto space-y-2 pt-5">
-                {tier.priceUsd === 0 ? (
+                {!signedIn ? (
+                  // Signed out: choosing a plan starts sign-up, then resumes here.
+                  tier.priceUsd === 0 ? (
+                    <SignUpButton mode="modal" forceRedirectUrl="/">
+                      <button className="w-full rounded-md border border-ink/15 px-4 py-2 text-sm font-medium text-ink-soft transition-colors hover:border-accent hover:text-accent">
+                        Sign up free
+                      </button>
+                    </SignUpButton>
+                  ) : (
+                    <SignUpButton mode="modal" forceRedirectUrl={intentUrl(tier.id)}>
+                      <button
+                        disabled={levelCount === 0}
+                        className="w-full rounded-md bg-accent px-4 py-2 text-sm font-medium text-white shadow-sm transition-transform hover:-translate-y-0.5 disabled:opacity-60"
+                      >
+                        {levelCount === 0
+                          ? "Pick a level above"
+                          : `Choose ${tier.name} — $${(tier.priceUsd * levelCount).toFixed(2)}`}
+                      </button>
+                    </SignUpButton>
+                  )
+                ) : tier.priceUsd === 0 ? (
                   <div className="rounded-md border border-ink/10 px-4 py-2 text-center text-sm text-ink-mute">
                     {isCurrent ? "Current plan" : "Included"}
                   </div>
@@ -424,10 +463,11 @@ export default function PricingPage() {
 
       {!signedIn ? (
         <p className="text-center text-sm text-ink-mute">
-          <Link href="/" className="text-accent hover:underline">
-            Sign in
-          </Link>{" "}
-          to subscribe and unlock more drills.
+          Pick a plan above to create your account, or{" "}
+          <SignInButton mode="modal">
+            <button className="text-accent hover:underline">sign in</button>
+          </SignInButton>{" "}
+          if you already have one.
         </p>
       ) : null}
 
