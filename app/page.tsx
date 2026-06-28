@@ -74,8 +74,12 @@ export default function HomePage() {
           The curriculum
         </h2>
         <p className="mt-2 max-w-2xl text-ink-soft">
-          Ten modules, each with a short lesson, before/after examples, and two
-          AI-coached practice drills. Work through them in order or jump to a weak spot.
+          Ten modules, each with a short lesson, before/after examples, and a deep
+          bank of AI-coached practice drills. Every drill comes in{" "}
+          <span className="font-medium text-ink">three career levels — Early, Mid,
+          and Senior</span> — so the scenarios and coaching match where you are. Pick
+          your level at sign-up (change it anytime); work through the modules in order
+          or jump to a weak spot.
         </p>
         <SignedIn>
           <CourseProgress keys={ALL_DRILL_KEYS} />
