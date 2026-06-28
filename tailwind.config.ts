@@ -9,15 +9,15 @@ const config: Config = {
     extend: {
       colors: {
         ink: {
-          DEFAULT: "#1a1a1a",
-          soft: "#3d3d3d",
-          mute: "#6b6b6b",
+          DEFAULT: "#1b1d21",
+          soft: "#3c4046",
+          mute: "#6a6f76",
         },
-        paper: "#faf8f3",
+        paper: "#f7f8fa",
         accent: {
-          DEFAULT: "#b5512f",
-          soft: "#d98b6f",
-          wash: "#f3e6df",
+          DEFAULT: "#2a6098",
+          soft: "#7ea8d2",
+          wash: "#e7eef6",
         },
       },
       fontFamily: {
