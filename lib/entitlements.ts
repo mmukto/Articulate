@@ -1,6 +1,6 @@
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { CLERK_ENABLED } from "./clerk-config";
-import { FREE_TIER, tierById, type Tier, type TierId } from "./tiers";
+import { FREE_TIER, TIER_MAP, tierById, type Tier, type TierId } from "./tiers";
 
 // Server-authoritative subscription entitlements. The user's plan lives in Clerk
 // `privateMetadata.subscription` (server-only, never trusted from the client)
@@ -40,11 +40,45 @@ export function effectiveTier(privateMetadata: unknown): Tier {
   return tierById(sub.tier);
 }
 
+// Comp accounts: emails/usernames listed in COMP_USER_EMAILS (server-only env,
+// comma-separated) get full Max access with no subscription, and the AI cap is
+// bypassed (see lib/limits.ts). Kept in env, not code, so the addresses stay
+// private even though the repo is public.
+type ClerkUserLike = {
+  username?: string | null;
+  emailAddresses?: { emailAddress: string }[];
+  privateMetadata?: unknown;
+};
+
+function compList(): string[] {
+  return (process.env.COMP_USER_EMAILS || "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+/** True if this user is on the comp allowlist (by email or username). */
+export function isCompUser(user: ClerkUserLike): boolean {
+  const list = compList();
+  if (list.length === 0) return false;
+  const ids = [
+    ...(user.username ? [user.username] : []),
+    ...(user.emailAddresses ?? []).map((e) => e.emailAddress),
+  ].map((s) => s.toLowerCase());
+  return ids.some((id) => list.includes(id));
+}
+
+/** Effective tier for a full Clerk user: Max if comp, else their plan. */
+export function tierForUser(user: ClerkUserLike): Tier {
+  if (isCompUser(user)) return TIER_MAP.max;
+  return effectiveTier(user.privateMetadata);
+}
+
 /** Effective tier for a given user id (one Clerk read). */
 export async function getUserTier(userId: string): Promise<Tier> {
   const client = await clerkClient();
   const user = await client.users.getUser(userId);
-  return effectiveTier(user.privateMetadata);
+  return tierForUser(user);
 }
 
 /**

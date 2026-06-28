@@ -1,6 +1,6 @@
 import { clerkClient } from "@clerk/nextjs/server";
 import type { Usage } from "./feedback";
-import { effectiveTier } from "./entitlements";
+import { isCompUser, tierForUser } from "./entitlements";
 
 // Per-user AI-feedback guardrails.
 //
@@ -81,7 +81,9 @@ export async function checkAccess(userId: string): Promise<AccessGate> {
   const client = await clerkClient();
   const user = await client.users.getUser(userId);
   const existingMetadata = (user.privateMetadata ?? {}) as Record<string, unknown>;
-  const budgetUsd = effectiveTier(existingMetadata).aiBudgetUsd;
+  const tier = tierForUser(user);
+  const comp = isCompUser(user); // comp accounts bypass the cap entirely
+  const budgetUsd = tier.aiBudgetUsd;
   const now = Date.now();
 
   let meter = readMeter(existingMetadata);
@@ -97,9 +99,8 @@ export async function checkAccess(userId: string): Promise<AccessGate> {
     budgetUsd,
     existingMetadata,
   };
-  if (meter.spentUsd >= budgetUsd) {
-    const tierName = effectiveTier(existingMetadata).name;
-    return { ok: false, status: 402, message: overBudgetMsg(tierName), ...base };
+  if (!comp && meter.spentUsd >= budgetUsd) {
+    return { ok: false, status: 402, message: overBudgetMsg(tier.name), ...base };
   }
   return { ok: true, status: 200, message: "", ...base };
 }
@@ -138,7 +139,7 @@ export interface UsageSummary {
 export async function getUsageSummary(userId: string): Promise<UsageSummary> {
   const client = await clerkClient();
   const user = await client.users.getUser(userId);
-  const tier = effectiveTier(user.privateMetadata);
+  const tier = tierForUser(user);
   const meter = readMeter(user.privateMetadata);
   const now = Date.now();
 

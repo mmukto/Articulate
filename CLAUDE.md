@@ -44,6 +44,10 @@ lives in `lib/course.ts`; the AI feedback contract is in `lib/types.ts`.
   the *effective* tier (reverts to Free when a paid plan lapses). Drill access is gated in
   the module page UI **and** enforced server-side in the feedback/speak routes — never
   trust the client.
+- **Comp accounts** (`lib/entitlements.ts`): emails/usernames in `COMP_USER_EMAILS`
+  (server-only env, comma-separated) resolve to **Max tier with the AI cap bypassed** —
+  full access, no subscription. Checked in `tierForUser`/`isCompUser`; kept in env so the
+  addresses stay private even though the repo is public.
 - **Payments** (`lib/stripe.ts`, `app/api/billing/*`): Stripe Checkout for annual
   subscriptions (`/checkout`), webhook sync (`/webhook`, raw-body signature verify), and
   billing portal (`/portal`). Optional like Clerk — unset `STRIPE_SECRET_KEY` and the app
