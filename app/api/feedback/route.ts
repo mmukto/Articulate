@@ -99,7 +99,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const { feedback, usage } = await gradeResponse(found.module, found.drill, response, level);
-    if (userId && gate) await recordSpend(userId, gate, estimateCostUsd(usage));
+    if (userId && gate) {
+      await recordSpend(userId, gate, estimateCostUsd(usage), { moduleSlug, drillId });
+    }
     return NextResponse.json({ feedback });
   } catch (err) {
     const message =

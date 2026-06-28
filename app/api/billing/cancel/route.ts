@@ -6,17 +6,11 @@ import { getStripe, STRIPE_ENABLED } from "@/lib/stripe";
 import { readSubscription, setUserSubscription } from "@/lib/entitlements";
 import { tierById } from "@/lib/tiers";
 import { readSpentUsd } from "@/lib/limits";
+import { practicedCount } from "@/lib/practiced";
 
 export const runtime = "nodejs";
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
-
-// Distinct drills the user has practiced (progress lives in unsafeMetadata.progress
-// as drillKey -> stats). Used to prorate the refund by usage.
-function countDrillsCompleted(unsafeMetadata: unknown): number {
-  const p = (unsafeMetadata as { progress?: Record<string, unknown> } | undefined)?.progress;
-  return p && typeof p === "object" ? Object.keys(p).length : 0;
-}
 
 // Cancellation with a usage-based refund:
 //   refund = price − AI spend − (drills completed / tier total) × price   (floored at 0)
@@ -58,7 +52,9 @@ export async function POST(req: NextRequest) {
   const price = round2(tier.priceUsd * levelCount);
   const drillTotal = tier.drillTotal * levelCount;
   const aiCostUsd = round2(readSpentUsd(user.privateMetadata));
-  const drillsCompleted = countDrillsCompleted(user.unsafeMetadata);
+  // Server-authoritative practiced count (privateMetadata) — not the
+  // client-writable progress, which a user could clear to inflate their refund.
+  const drillsCompleted = practicedCount(user.privateMetadata);
   const drillCharge = Math.min(
     price,
     drillTotal > 0 ? round2((drillsCompleted / drillTotal) * price) : 0,

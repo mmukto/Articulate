@@ -107,7 +107,9 @@ export async function POST(req: NextRequest) {
       typeof mimeType === "string" && mimeType ? mimeType : "audio/mp4",
       level,
     );
-    if (userId && gate) await recordSpend(userId, gate, estimateCostUsd(usage));
+    if (userId && gate) {
+      await recordSpend(userId, gate, estimateCostUsd(usage), { moduleSlug, drillId });
+    }
     return NextResponse.json({ feedback });
   } catch (err) {
     const message =

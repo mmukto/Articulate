@@ -861,6 +861,18 @@ export const MODULE_MAP: Record<string, Module> = MODULES.reduce(
   {} as Record<string, Module>,
 );
 
+// Canonical enumeration of every drill as "<moduleSlug>/<drillId>", and a stable
+// index per key. Used both for the home-page progress ring and for the
+// server-side practiced-drill bitset (lib/practiced.ts). Indices are stable as
+// long as drill ids aren't changed; appending new drills only grows the list.
+export const ALL_DRILL_KEYS: string[] = MODULES.flatMap((m) =>
+  m.drills.map((d) => `${m.slug}/${d.id}`),
+);
+export const DRILL_INDEX: Map<string, number> = new Map(
+  ALL_DRILL_KEYS.map((k, i) => [k, i]),
+);
+export const TOTAL_DRILLS = ALL_DRILL_KEYS.length;
+
 export function getDrill(moduleSlug: string, drillId: string) {
   const module = MODULE_MAP[moduleSlug];
   if (!module) return null;

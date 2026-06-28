@@ -2,6 +2,7 @@ import { clerkClient } from "@clerk/nextjs/server";
 import type { Usage } from "./feedback";
 import { aiBudgetUsdForUser, isCompUser, levelsForUser, tierForUser } from "./entitlements";
 import { readLevel, type Level } from "./levels";
+import { markPracticed } from "./practiced";
 
 // Per-user AI-feedback guardrails.
 //
@@ -112,20 +113,36 @@ export async function checkAccess(userId: string): Promise<AccessGate> {
 }
 
 /**
- * Add the cost of a completed AI call to the user's running total. Best-effort:
- * a failed write never blocks returning feedback the user already received.
+ * Record the result of a completed AI call: add its cost to the user's running
+ * total and (if a drill is given) mark that drill practiced in the server-side
+ * bitset, both in a single metadata write. Best-effort: a failed write never
+ * blocks returning feedback the user already received.
  */
 export async function recordSpend(
   userId: string,
   gate: AccessGate,
   costUsd: number,
+  practiced?: { moduleSlug: string; drillId: string },
 ): Promise<void> {
-  if (!(costUsd > 0)) return;
+  const spendChanged = costUsd > 0;
+  const mark = practiced
+    ? markPracticed(gate.existingMetadata, practiced.moduleSlug, practiced.drillId)
+    : null;
+  const practicedChanged = !!mark?.changed;
+  if (!spendChanged && !practicedChanged) return;
+
   try {
     const client = await clerkClient();
-    await writeMeter(client, userId, gate.existingMetadata, {
+    const meter: Meter = {
       windowStartedAt: gate.windowStartedAt,
-      spentUsd: round6(gate.spentUsd + costUsd),
+      spentUsd: round6(gate.spentUsd + (spendChanged ? costUsd : 0)),
+    };
+    await client.users.updateUserMetadata(userId, {
+      privateMetadata: {
+        ...gate.existingMetadata,
+        usage: meter,
+        ...(practicedChanged ? { practiced: mark!.value } : {}),
+      },
     });
   } catch (err) {
     console.error("[limits] failed to record spend:", err);

@@ -1,13 +1,8 @@
 import Link from "next/link";
 import { SignedIn, SignedOut, SignUpButton } from "@/components/auth";
-import { MODULES, DIMENSIONS } from "@/lib/course";
+import { MODULES, DIMENSIONS, ALL_DRILL_KEYS } from "@/lib/course";
 import { CourseProgress } from "@/components/CourseProgress";
 import { ModuleProgressBadge } from "@/components/ModuleProgressBadge";
-
-// Keys must match drillKey() in lib/progress.ts: `${moduleSlug}/${drillId}`.
-const ALL_DRILL_KEYS = MODULES.flatMap((m) =>
-  m.drills.map((d) => `${m.slug}/${d.id}`),
-);
 
 export default function HomePage() {
   return (
