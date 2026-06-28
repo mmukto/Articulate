@@ -110,5 +110,15 @@ export default function RootLayout({
 
   // Only mount ClerkProvider when Clerk is configured; without a publishable key
   // it throws during render. When unconfigured the app runs auth-disabled.
-  return CLERK_ENABLED ? <ClerkProvider>{shell}</ClerkProvider> : shell;
+  // The localization override forces the sign-in modal title to our brand
+  // instead of Clerk's application name (which is still "LifeOS" upstream).
+  return CLERK_ENABLED ? (
+    <ClerkProvider
+      localization={{
+        signIn: { start: { title: "Sign in to iArticulate™" } },
+      }}
+    >
+      {shell}
+    </ClerkProvider>
+  ) : shell;
 }
