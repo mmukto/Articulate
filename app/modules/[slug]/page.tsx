@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SignedIn, SignedOut, SignInButton, SignUpButton } from "@/components/auth";
 import { MODULES, MODULE_MAP } from "@/lib/course";
-import { DrillPractice } from "@/components/DrillPractice";
+import { ModuleDrills } from "@/components/ModuleDrills";
 import { getCurrentTier } from "@/lib/entitlements";
 import { drillsPerModule } from "@/lib/tiers";
 
@@ -27,11 +27,10 @@ export default async function ModulePage({ params }: { params: { slug: string } 
   const prev = idx > 0 ? MODULES[idx - 1] : null;
   const next = idx < MODULES.length - 1 ? MODULES[idx + 1] : null;
 
-  // Tier-gate the drills: a plan unlocks the first N drills in each module.
+  // Tier governs how many drills unlock per level (server-authoritative); the
+  // client component filters by the user's chosen career level.
   const tier = await getCurrentTier();
-  const unlocked = drillsPerModule(tier);
-  const unlockedDrills = module.drills.slice(0, unlocked);
-  const lockedDrills = module.drills.slice(unlocked);
+  const tierCount = drillsPerModule(tier);
 
   return (
     <article className="space-y-12">
@@ -136,53 +135,15 @@ export default async function ModulePage({ params }: { params: { slug: string } 
 
       {/* Drills */}
       <section className="space-y-6">
-        <div className="flex items-baseline justify-between gap-3">
-          <div>
-            <h2 className="font-serif text-2xl font-semibold tracking-tight">
-              Practice
-            </h2>
-            <p className="mt-1 text-ink-soft">
-              Write a response, then get coached. Revise and re-score as many times as you
-              like — iteration is the point.
-            </p>
-          </div>
-          <span className="shrink-0 whitespace-nowrap text-xs text-ink-mute">
-            {Math.min(unlocked, module.drills.length)} of {module.drills.length} drills
-          </span>
+        <div>
+          <h2 className="font-serif text-2xl font-semibold tracking-tight">Practice</h2>
+          <p className="mt-1 text-ink-soft">
+            Write a response, then get coached. Revise and re-score as many times as you
+            like — iteration is the point.
+          </p>
         </div>
         <SignedIn>
-          {unlockedDrills.map((drill) => (
-            <DrillPractice key={drill.id} moduleSlug={module.slug} drill={drill} />
-          ))}
-          {lockedDrills.length > 0 ? (
-            <div className="rounded-xl border border-dashed border-ink/15 bg-white/40 p-6">
-              <div className="flex items-center gap-2 text-sm font-semibold text-ink">
-                <span aria-hidden>🔒</span>
-                {lockedDrills.length} more drill{lockedDrills.length === 1 ? "" : "s"} in
-                this module
-              </div>
-              <ul className="mt-2 space-y-1 text-sm text-ink-mute">
-                {lockedDrills.slice(0, 3).map((d) => (
-                  <li key={d.id} className="truncate">
-                    • {d.title}
-                  </li>
-                ))}
-                {lockedDrills.length > 3 ? (
-                  <li>• …and {lockedDrills.length - 3} more</li>
-                ) : null}
-              </ul>
-              <p className="mt-3 text-sm text-ink-soft">
-                You're on the <span className="font-medium">{tier.name}</span> plan. Upgrade
-                to unlock more practice in every module.
-              </p>
-              <Link
-                href="/pricing"
-                className="mt-4 inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-white shadow-sm transition-transform hover:-translate-y-0.5"
-              >
-                See plans
-              </Link>
-            </div>
-          ) : null}
+          <ModuleDrills module={module} tierCount={tierCount} tierName={tier.name} />
         </SignedIn>
         <SignedOut>
           <div className="rounded-xl border border-ink/10 bg-white/60 p-8 text-center">

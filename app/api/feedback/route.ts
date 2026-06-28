@@ -4,8 +4,9 @@ import { getDrill } from "@/lib/course";
 import { gradeResponse } from "@/lib/feedback";
 import { CLERK_ENABLED } from "@/lib/clerk-config";
 import { checkAccess, recordSpend, estimateCostUsd, type AccessGate } from "@/lib/limits";
-import { getUserTier } from "@/lib/entitlements";
+import { getUserTierAndLevel } from "@/lib/entitlements";
 import { drillsPerModule } from "@/lib/tiers";
+import type { Level } from "@/lib/levels";
 
 // Feedback grading can take a few seconds with adaptive thinking — give it room.
 export const maxDuration = 60;
@@ -65,12 +66,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unknown drill." }, { status: 404 });
   }
 
-  // Server-authoritative tier gate: a drill is only accessible if its position
-  // within the module is within the user's plan. Never trust the client.
+  // Server-authoritative gates (never trust the client): the drill must match
+  // the user's career level, and its position within that level must be within
+  // their plan.
   let gate: AccessGate | null = null;
+  let level: Level = "senior";
   if (userId) {
-    const tier = await getUserTier(userId);
-    if (found.index >= drillsPerModule(tier)) {
+    const ctx = await getUserTierAndLevel(userId);
+    level = ctx.level;
+    if (found.level !== level) {
+      return NextResponse.json(
+        { error: "That drill is for a different career level. Switch your level to practice it." },
+        { status: 403 },
+      );
+    }
+    if (found.levelIndex >= drillsPerModule(ctx.tier)) {
       return NextResponse.json(
         { error: "This drill is part of a higher plan. Upgrade to unlock it." },
         { status: 403 },
@@ -84,7 +94,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { feedback, usage } = await gradeResponse(found.module, found.drill, response);
+    const { feedback, usage } = await gradeResponse(found.module, found.drill, response, level);
     if (userId && gate) await recordSpend(userId, gate, estimateCostUsd(usage));
     return NextResponse.json({ feedback });
   } catch (err) {

@@ -1,5 +1,6 @@
 import { DIMENSIONS, DIMENSION_MAP, DELIVERY_DIMENSIONS } from "./course";
 import type { Drill, Module } from "./types";
+import { LEVEL_MAP, type Level } from "./levels";
 
 // Provider-agnostic prompts shared by every AI backend. Keeping these in one
 // place means Claude and Gemini grade against identical instructions.
@@ -23,13 +24,17 @@ export function buildUserPrompt(
   module: Module,
   drill: Drill,
   response: string,
+  level: Level = "senior",
 ): string {
   const focusLabels = drill.focus.map((k) => DIMENSION_MAP[k].label).join(", ");
   const rubric = DIMENSIONS.map(
     (d) => `- ${d.label} (${d.key}): ${d.description}`,
   ).join("\n");
 
-  return `# Module
+  return `# Learner
+Calibrate everything — your standards, examples, and the rewrite — to the learner's career stage. The learner is ${LEVEL_MAP[level].coachNote}
+
+# Module
 ${module.number}. ${module.title} — ${module.tagline}
 Core idea: ${module.lesson.summary}
 
@@ -66,12 +71,19 @@ You will receive an audio recording plus the drill the speaker was attempting. D
 
 Be specific and encouraging. Judge pronunciation qualitatively (intelligibility), not at a phoneme level. If the audio is empty, silent, or unintelligible, say so plainly in the headline, score low, and use modelDelivery to demonstrate a strong answer to the drill.`;
 
-export function buildSpokenPrompt(module: Module, drill: Drill): string {
+export function buildSpokenPrompt(
+  module: Module,
+  drill: Drill,
+  level: Level = "senior",
+): string {
   const delivery = DELIVERY_DIMENSIONS.map(
     (d) => `- ${d.label} (${d.key}): ${d.description}`,
   ).join("\n");
 
-  return `# Module
+  return `# Learner
+Calibrate your coaching to the speaker's career stage. The speaker is ${LEVEL_MAP[level].coachNote}
+
+# Module
 ${module.number}. ${module.title} — ${module.tagline}
 
 # Drill the speaker was attempting: ${drill.title}

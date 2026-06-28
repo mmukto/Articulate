@@ -6,6 +6,8 @@ import type {
   Module,
 } from "./types";
 import { EXTRA_DRILLS } from "./drills-extra";
+import { EARLY_DRILLS } from "./drills-early";
+import { MID_DRILLS } from "./drills-mid";
 
 export const DIMENSIONS: Dimension[] = [
   {
@@ -841,7 +843,14 @@ const RAW_MODULES: Module[] = [
 export const MODULES: Module[] = RAW_MODULES.map((m, i) => ({
   ...m,
   number: i + 1,
-  drills: [...m.drills, ...(EXTRA_DRILLS[m.slug] ?? [])],
+  // Senior drills (the original library) + the Early/Mid level pools. Any drill
+  // without an explicit level is treated as senior.
+  drills: [
+    ...m.drills,
+    ...(EXTRA_DRILLS[m.slug] ?? []),
+    ...(EARLY_DRILLS[m.slug] ?? []),
+    ...(MID_DRILLS[m.slug] ?? []),
+  ].map((d) => ({ ...d, level: d.level ?? "senior" })),
 }));
 
 export const MODULE_MAP: Record<string, Module> = MODULES.reduce(
@@ -855,9 +864,20 @@ export const MODULE_MAP: Record<string, Module> = MODULES.reduce(
 export function getDrill(moduleSlug: string, drillId: string) {
   const module = MODULE_MAP[moduleSlug];
   if (!module) return null;
-  const index = module.drills.findIndex((d) => d.id === drillId);
-  if (index < 0) return null;
-  // `index` is the drill's position within its module — used to gate access by
-  // subscription tier (each tier unlocks the first N drills per module).
-  return { module, drill: module.drills[index], index };
+  const drill = module.drills.find((d) => d.id === drillId);
+  if (!drill) return null;
+  const level = drill.level ?? "senior";
+  // Position within this drill's level group — each tier unlocks the first N
+  // drills per level, per module.
+  const levelIndex = module.drills
+    .filter((d) => (d.level ?? "senior") === level)
+    .findIndex((d) => d.id === drillId);
+  return { module, drill, level, levelIndex };
+}
+
+/** Drills in a module for a given level, in unlock order. */
+export function drillsForLevel(moduleSlug: string, level: string) {
+  const module = MODULE_MAP[moduleSlug];
+  if (!module) return [];
+  return module.drills.filter((d) => (d.level ?? "senior") === level);
 }

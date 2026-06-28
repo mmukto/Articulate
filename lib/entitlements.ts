@@ -1,6 +1,7 @@
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { CLERK_ENABLED } from "./clerk-config";
 import { FREE_TIER, TIER_MAP, tierById, type Tier, type TierId } from "./tiers";
+import { DEFAULT_LEVEL, readLevel, type Level } from "./levels";
 
 // Server-authoritative subscription entitlements. The user's plan lives in Clerk
 // `privateMetadata.subscription` (server-only, never trusted from the client)
@@ -90,6 +91,30 @@ export async function getCurrentTier(): Promise<Tier> {
   const { userId } = await auth();
   if (!userId) return FREE_TIER;
   return getUserTier(userId);
+}
+
+/** The user's chosen career level (Clerk unsafeMetadata.level; default senior). */
+export async function getUserLevel(userId: string): Promise<Level> {
+  const client = await clerkClient();
+  const user = await client.users.getUser(userId);
+  return readLevel(user.unsafeMetadata);
+}
+
+/** Effective tier + chosen level in a single Clerk read (used by the AI routes). */
+export async function getUserTierAndLevel(
+  userId: string,
+): Promise<{ tier: Tier; level: Level }> {
+  const client = await clerkClient();
+  const user = await client.users.getUser(userId);
+  return { tier: tierForUser(user), level: readLevel(user.unsafeMetadata) };
+}
+
+/** Career level for the current request (default when auth off / signed out). */
+export async function getCurrentLevel(): Promise<Level> {
+  if (!CLERK_ENABLED) return DEFAULT_LEVEL;
+  const { userId } = await auth();
+  if (!userId) return DEFAULT_LEVEL;
+  return getUserLevel(userId);
 }
 
 /**

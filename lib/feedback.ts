@@ -7,6 +7,7 @@ import {
 } from "./prompt";
 import * as claude from "./providers/claude";
 import * as gemini from "./providers/gemini";
+import type { Level } from "./levels";
 import type {
   DimensionKey,
   DeliveryKey,
@@ -47,11 +48,12 @@ export async function gradeResponse(
   module: Module,
   drill: Drill,
   response: string,
+  level: Level = "senior",
 ): Promise<{ feedback: Feedback; usage: Usage }> {
   const provider = activeProvider();
   if (!provider) throw new Error(NOT_CONFIGURED);
 
-  const user = buildUserPrompt(module, drill, response);
+  const user = buildUserPrompt(module, drill, response, level);
   const raw =
     provider === "gemini"
       ? await gemini.grade(SYSTEM_PROMPT, user)
@@ -73,6 +75,7 @@ export async function gradeSpoken(
   drill: Drill,
   audioBase64: string,
   mimeType: string,
+  level: Level = "senior",
 ): Promise<{ feedback: SpokenFeedback; usage: Usage }> {
   if (!gemini.isConfigured()) {
     throw new Error(
@@ -81,7 +84,7 @@ export async function gradeSpoken(
   }
   const raw = await gemini.gradeAudio(
     SPOKEN_SYSTEM_PROMPT,
-    buildSpokenPrompt(module, drill),
+    buildSpokenPrompt(module, drill, level),
     audioBase64,
     mimeType,
   );
