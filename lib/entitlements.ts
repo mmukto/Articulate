@@ -100,13 +100,17 @@ export async function getUserLevel(userId: string): Promise<Level> {
   return readLevel(user.unsafeMetadata);
 }
 
-/** Effective tier + chosen level in a single Clerk read (used by the AI routes). */
+/** Effective tier + chosen level + comp flag in one Clerk read (AI routes). */
 export async function getUserTierAndLevel(
   userId: string,
-): Promise<{ tier: Tier; level: Level }> {
+): Promise<{ tier: Tier; level: Level; comp: boolean }> {
   const client = await clerkClient();
   const user = await client.users.getUser(userId);
-  return { tier: tierForUser(user), level: readLevel(user.unsafeMetadata) };
+  return {
+    tier: tierForUser(user),
+    level: readLevel(user.unsafeMetadata),
+    comp: isCompUser(user),
+  };
 }
 
 /** Career level for the current request (default when auth off / signed out). */

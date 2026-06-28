@@ -76,17 +76,20 @@ export async function POST(req: NextRequest) {
   if (userId) {
     const ctx = await getUserTierAndLevel(userId);
     level = ctx.level;
-    if (found.level !== level) {
-      return NextResponse.json(
-        { error: "That drill is for a different career level. Switch your level to practice it." },
-        { status: 403 },
-      );
-    }
-    if (found.levelIndex >= drillsPerModule(ctx.tier)) {
-      return NextResponse.json(
-        { error: "This drill is part of a higher plan. Upgrade to unlock it." },
-        { status: 403 },
-      );
+    // Comp/owner accounts have full access to every drill at every level.
+    if (!ctx.comp) {
+      if (found.level !== level) {
+        return NextResponse.json(
+          { error: "That drill is for a different career level. Switch your level to practice it." },
+          { status: 403 },
+        );
+      }
+      if (found.levelIndex >= drillsPerModule(ctx.tier)) {
+        return NextResponse.json(
+          { error: "This drill is part of a higher plan. Upgrade to unlock it." },
+          { status: 403 },
+        );
+      }
     }
     // Enforce the per-user annual AI allowance before spending money.
     gate = await checkAccess(userId);
