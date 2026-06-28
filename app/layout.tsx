@@ -57,6 +57,12 @@ export default function RootLayout({
                 >
                   Modules
                 </Link>
+                <Link
+                  href="/pricing"
+                  className="text-sm text-ink-mute transition-colors hover:text-accent"
+                >
+                  Plans
+                </Link>
                 <SignedOut>
                   <SignInButton mode="modal">
                     <button className="text-sm text-ink-soft transition-colors hover:text-accent">

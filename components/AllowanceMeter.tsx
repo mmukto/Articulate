@@ -12,11 +12,11 @@ const USAGE_EVENT = "articulate:usage";
 
 interface Summary {
   enabled: boolean;
+  tierName?: string;
   percentUsed?: number;
   spentUsd?: number;
   budgetUsd?: number;
   daysLeft?: number;
-  expired?: boolean;
 }
 
 export default function AllowanceMeter() {
@@ -45,20 +45,19 @@ export default function AllowanceMeter() {
   if (!data || !data.enabled || data.percentUsed == null) return null;
 
   const pct = Math.max(0, Math.min(100, data.percentUsed));
-  const warn = pct >= 80 || data.expired;
-  const title = data.expired
-    ? "Your one-year access to the AI coach has ended"
-    : `$${(data.spentUsd ?? 0).toFixed(2)} of $${(data.budgetUsd ?? 0).toFixed(0)} used` +
-      (data.daysLeft != null
-        ? ` · ${data.daysLeft} day${data.daysLeft === 1 ? "" : "s"} left`
-        : "");
+  const warn = pct >= 80;
+  const title =
+    `${data.tierName ?? "Free"} plan · ` +
+    `$${(data.spentUsd ?? 0).toFixed(2)} of $${(data.budgetUsd ?? 0).toFixed(0)} used` +
+    (data.daysLeft != null ? ` · renews in ${data.daysLeft} day${data.daysLeft === 1 ? "" : "s"}` : "");
 
   return (
-    <span
+    <a
+      href="/pricing"
       title={title}
       className={`hidden items-center gap-1.5 text-xs sm:inline-flex ${
         warn ? "text-red-700" : "text-ink-mute"
-      }`}
+      } transition-colors hover:text-accent`}
     >
       <span
         aria-hidden
@@ -66,17 +65,15 @@ export default function AllowanceMeter() {
       >
         <span
           className={`block h-full rounded-full ${warn ? "bg-red-600" : "bg-accent"}`}
-          style={{ width: `${data.expired ? 100 : pct}%` }}
+          style={{ width: `${pct}%` }}
         />
       </span>
       <span aria-label={`${pct}% of your annual allowance used`}>
-        <span className="lg:hidden">{data.expired ? "ended" : `${pct}%`}</span>
+        <span className="lg:hidden">{`${pct}%`}</span>
         <span className="hidden lg:inline">
-          {data.expired
-            ? "Access ended"
-            : `${pct}% of your annual allowance used`}
+          {`${pct}% of your annual allowance used`}
         </span>
       </span>
-    </span>
+    </a>
   );
 }

@@ -5,6 +5,7 @@ import type {
   DeliveryKey,
   Module,
 } from "./types";
+import { EXTRA_DRILLS } from "./drills-extra";
 
 export const DIMENSIONS: Dimension[] = [
   {
@@ -834,10 +835,13 @@ const RAW_MODULES: Module[] = [
   },
 ];
 
-// Number modules by their position so inserting/reordering never desyncs.
+// Number modules by their position so inserting/reordering never desyncs, and
+// append the tier-unlockable drills (lib/drills-extra.ts) after each module's
+// hand-curated drills, taking each to 25 total.
 export const MODULES: Module[] = RAW_MODULES.map((m, i) => ({
   ...m,
   number: i + 1,
+  drills: [...m.drills, ...(EXTRA_DRILLS[m.slug] ?? [])],
 }));
 
 export const MODULE_MAP: Record<string, Module> = MODULES.reduce(
@@ -851,7 +855,9 @@ export const MODULE_MAP: Record<string, Module> = MODULES.reduce(
 export function getDrill(moduleSlug: string, drillId: string) {
   const module = MODULE_MAP[moduleSlug];
   if (!module) return null;
-  const drill = module.drills.find((d) => d.id === drillId);
-  if (!drill) return null;
-  return { module, drill };
+  const index = module.drills.findIndex((d) => d.id === drillId);
+  if (index < 0) return null;
+  // `index` is the drill's position within its module — used to gate access by
+  // subscription tier (each tier unlocks the first N drills per module).
+  return { module, drill: module.drills[index], index };
 }

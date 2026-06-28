@@ -4,6 +4,8 @@ import { getDrill } from "@/lib/course";
 import { gradeSpoken } from "@/lib/feedback";
 import { CLERK_ENABLED } from "@/lib/clerk-config";
 import { checkAccess, recordSpend, estimateCostUsd, type AccessGate } from "@/lib/limits";
+import { getUserTier } from "@/lib/entitlements";
+import { drillsPerModule } from "@/lib/tiers";
 
 // Audio coaching can take a little longer than text — give it room.
 export const maxDuration = 60;
@@ -65,9 +67,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unknown drill." }, { status: 404 });
   }
 
-  // Enforce the per-user access window + annual spend cap before spending money.
+  // Server-authoritative tier gate: a drill is only accessible if its position
+  // within the module is within the user's plan. Never trust the client.
   let gate: AccessGate | null = null;
   if (userId) {
+    const tier = await getUserTier(userId);
+    if (found.index >= drillsPerModule(tier)) {
+      return NextResponse.json(
+        { error: "This drill is part of a higher plan. Upgrade to unlock it." },
+        { status: 403 },
+      );
+    }
+    // Enforce the per-user annual AI allowance before spending money.
     gate = await checkAccess(userId);
     if (!gate.ok) {
       return NextResponse.json({ error: gate.message }, { status: gate.status });

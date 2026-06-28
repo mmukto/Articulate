@@ -36,11 +36,25 @@ lives in `lib/course.ts`; the AI feedback contract is in `lib/types.ts`.
 - **AI coach.** Default model is `gemini-2.5-flash-lite` (override with `GEMINI_MODEL`);
   the provider is switchable to Claude via `ANTHROPIC_API_KEY`. Gemini billing must be
   enabled on the Google Cloud project (free tier is effectively unavailable).
-- **Per-user cost guardrails** (`lib/limits.ts`): each signed-in user gets one year of
-  access from sign-up and a hard **$2** spend cap, metered from real token usage and
-  stored in Clerk **`privateMetadata`** (server-only, tamper-proof). Enforced in the
-  feedback + speak routes. Tune with `USER_ANNUAL_BUDGET_USD` / `USER_ACCESS_DAYS`. If you
-  change model/provider, update the per-token price in `lib/limits.ts` so the cap stays accurate.
+- **Subscription tiers** (`lib/tiers.ts`): Free / Starter / Plus / Pro / Max unlock
+  10 / 30 / 60 / 120 / 250 **total** drills (spread evenly = 1/3/6/12/25 per module, via
+  `drillsPerModule`). Each module hand-curates 2 drills; `lib/drills-extra.ts` fills the
+  rest to 25, merged in `course.ts`. The active plan lives in Clerk `privateMetadata`
+  (server-authoritative, written by the Stripe webhook); `lib/entitlements.ts` resolves
+  the *effective* tier (reverts to Free when a paid plan lapses). Drill access is gated in
+  the module page UI **and** enforced server-side in the feedback/speak routes — never
+  trust the client.
+- **Payments** (`lib/stripe.ts`, `app/api/billing/*`): Stripe Checkout for annual
+  subscriptions (`/checkout`), webhook sync (`/webhook`, raw-body signature verify), and
+  billing portal (`/portal`). Optional like Clerk — unset `STRIPE_SECRET_KEY` and the app
+  still builds/runs (checkout returns 503). Needs the secret key + 4 annual price IDs +
+  webhook secret (see `.env.example`).
+- **Per-user AI cost guardrails** (`lib/limits.ts`): each signed-in user gets an annual
+  AI-feedback allowance that **renews every 365 days**, sized by their tier
+  (`tier.aiBudgetUsd`; Free = $2). Metered from real token usage, stored in Clerk
+  `privateMetadata` (server-only, tamper-proof), enforced in the feedback/speak routes,
+  surfaced by the header `AllowanceMeter` via `/api/usage`. If you change model/provider,
+  update the per-token price in `lib/limits.ts`.
 
 ## Verifying changes
 
