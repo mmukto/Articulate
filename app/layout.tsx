@@ -72,9 +72,11 @@ export default function RootLayout({
                     </button>
                   </SignInButton>
                   {/* Send sign-up through the plans page first, so people choose
-                      a plan (or Free) before creating an account. */}
+                      a plan (or Free) before creating an account. The #plans anchor
+                      means clicking this while already on /pricing scrolls to the
+                      plan chooser instead of doing nothing. */}
                   <Link
-                    href="/pricing"
+                    href="/pricing#plans"
                     className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-transform hover:-translate-y-0.5"
                   >
                     Sign up

@@ -282,6 +282,16 @@ export default function PricingPage() {
         </p>
       </header>
 
+      {/* Signed-out visitors create their account *by choosing a plan* (the header
+          "Sign up" routes here), so make that explicit. */}
+      {!signedIn ? (
+        <div className="rounded-xl border border-accent/40 bg-accent-wash/30 p-4 text-center text-sm text-ink-soft">
+          <span className="font-medium text-ink">To sign up, choose a plan below.</span>{" "}
+          Start with <span className="font-medium text-ink">Free</span>, or pick your career
+          level(s) and a paid plan — account creation continues from there.
+        </div>
+      ) : null}
+
       {/* Current subscription summary */}
       {signedIn && currentTier && currentTier !== "free" ? (
         <section className="rounded-xl border-2 border-accent bg-accent-wash/30 p-5">
@@ -312,7 +322,7 @@ export default function PricingPage() {
       ) : null}
 
       {/* Level chooser — the price below multiplies by how many you pick. */}
-      <section className="rounded-xl border border-ink/10 bg-white/50 p-5">
+      <section id="plans" className="scroll-mt-24 rounded-xl border border-ink/10 bg-white/50 p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="font-serif text-lg font-semibold tracking-tight">
             Which level(s) do you want to train?
