@@ -49,18 +49,23 @@ export async function POST(req: NextRequest) {
   try {
     const existing = await stripe.subscriptions.retrieve(sub.stripeSubscriptionId!);
     const itemId = existing.items.data[0]?.id;
+    // Stripe's documented proration-preview method: tag the change with a
+    // proration_date, then sum the line items whose period STARTS at that date —
+    // those are the immediate proration adjustments (the new-plan charge for the
+    // remaining term minus the credit for unused time on the old plan). This is
+    // the exact amount the real upgrade (always_invoice) bills now.
+    const prorationDate = Math.floor(Date.now() / 1000);
     const preview = await stripe.invoices.createPreview({
       customer: sub.stripeCustomerId,
       subscription: sub.stripeSubscriptionId!,
       subscription_details: {
         items: [{ id: itemId, price: priceId, quantity }],
-        proration_behavior: "always_invoice",
+        proration_behavior: "create_prorations",
+        proration_date: prorationDate,
       },
     });
-    // The immediate charge is the net of the proration line items (a positive
-    // charge for the new plan minus the credit for unused time on the old one).
     const cents = preview.lines.data
-      .filter((l) => (l as { proration?: boolean }).proration)
+      .filter((l) => l.period?.start === prorationDate)
       .reduce((sum, l) => sum + l.amount, 0);
     const amountDueNow = Math.max(0, Math.round(cents)) / 100;
     return NextResponse.json({ amountDueNow });
