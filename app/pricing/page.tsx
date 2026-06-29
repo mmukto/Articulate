@@ -30,6 +30,13 @@ export default function PricingPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [cancelData, setCancelData] = useState<CancelBreakdown | null>(null);
+  // Set when a subscriber is about to upgrade in place (charges the card on
+  // file) — drives the confirm-before-charge dialog.
+  const [confirmUpgrade, setConfirmUpgrade] = useState<{
+    tierId: TierId;
+    tierName: string;
+    newAnnual: number;
+  } | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -109,6 +116,26 @@ export default function PricingPage() {
     );
   }
   const levelCount = selectedLevels.length;
+  const onPaidPlan = signedIn && !!currentTier && currentTier !== "free";
+
+  // New subscriptions go straight to Stripe Checkout (which shows the card form,
+  // so there's no surprise charge). In-place upgrades charge the saved card
+  // silently, so confirm first.
+  function requestSubscribe(tierId: TierId, tierName: string) {
+    if (selectedLevels.length === 0) {
+      setError("Pick at least one career level first.");
+      return;
+    }
+    if (onPaidPlan) {
+      setConfirmUpgrade({
+        tierId,
+        tierName,
+        newAnnual: tierById(tierId).priceUsd * selectedLevels.length,
+      });
+    } else {
+      void subscribe(tierId);
+    }
+  }
 
   async function post(url: string, body?: unknown): Promise<void> {
     const res = await fetch(url, {
@@ -321,6 +348,35 @@ export default function PricingPage() {
         </div>
       ) : null}
 
+      {confirmUpgrade ? (
+        <div className="rounded-xl border-2 border-accent bg-accent-wash/30 p-5 text-sm">
+          <h3 className="font-serif text-lg font-semibold text-ink">
+            Upgrade to {confirmUpgrade.tierName}?
+          </h3>
+          <p className="mt-1 text-ink-soft">
+            Your card on file will be charged now — the prorated difference for the rest of
+            your current billing year — then $
+            {confirmUpgrade.newAnnual.toFixed(2)}/year at renewal. The new drills unlock right
+            away.
+          </p>
+          <div className="mt-4 flex justify-center gap-3">
+            <button
+              onClick={() => void subscribe(confirmUpgrade.tierId)}
+              disabled={busy === confirmUpgrade.tierId}
+              className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white shadow-sm disabled:opacity-60"
+            >
+              {busy === confirmUpgrade.tierId ? "Processing…" : "Confirm — charge my card"}
+            </button>
+            <button
+              onClick={() => setConfirmUpgrade(null)}
+              className="rounded-md border border-ink/15 px-4 py-2 text-sm text-ink-soft transition-colors hover:border-accent hover:text-accent"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {TIERS.map((tier) => {
           const isCurrent = currentTier === tier.id;
@@ -330,7 +386,6 @@ export default function PricingPage() {
           const perModule = drillsPerModule(tier);
           // Once on a paid plan, move the highlight to the current tier and drop
           // the "Popular" flag; otherwise keep highlighting the popular tier.
-          const onPaidPlan = signedIn && !!currentTier && currentTier !== "free";
           const isHighlighted = onPaidPlan ? isCurrent : !!tier.highlight;
           const showPopular = !!tier.highlight && !onPaidPlan;
           // A lower tier than the current one can't be switched to in place —
@@ -411,7 +466,7 @@ export default function PricingPage() {
                       </div>
                     ) : (
                       <button
-                        onClick={() => subscribe(tier.id)}
+                        onClick={() => requestSubscribe(tier.id, tier.name)}
                         disabled={busy === tier.id || levelCount === 0}
                         className="w-full rounded-md bg-accent px-4 py-2 text-sm font-medium text-white shadow-sm transition-transform hover:-translate-y-0.5 disabled:opacity-60"
                       >
