@@ -36,6 +36,8 @@ export default function PricingPage() {
     tierId: TierId;
     tierName: string;
     newAnnual: number;
+    amountDueNow: number | null; // exact prorated charge from Stripe
+    loading: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -127,11 +129,35 @@ export default function PricingPage() {
       return;
     }
     if (onPaidPlan) {
+      const levels = selectedLevels;
       setConfirmUpgrade({
         tierId,
         tierName,
-        newAnnual: tierById(tierId).priceUsd * selectedLevels.length,
+        newAnnual: tierById(tierId).priceUsd * levels.length,
+        amountDueNow: null,
+        loading: true,
       });
+      // Fetch the exact prorated charge to show before they confirm.
+      fetch("/api/billing/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tier: tierId, levels }),
+      })
+        .then((r) => r.json())
+        .then((d) =>
+          setConfirmUpgrade((prev) =>
+            prev && prev.tierId === tierId
+              ? {
+                  ...prev,
+                  amountDueNow: typeof d?.amountDueNow === "number" ? d.amountDueNow : null,
+                  loading: false,
+                }
+              : prev,
+          ),
+        )
+        .catch(() =>
+          setConfirmUpgrade((prev) => (prev ? { ...prev, loading: false } : prev)),
+        );
     } else {
       void subscribe(tierId);
     }
@@ -354,18 +380,39 @@ export default function PricingPage() {
             Upgrade to {confirmUpgrade.tierName}?
           </h3>
           <p className="mt-1 text-ink-soft">
-            Your card on file will be charged now — the prorated difference for the rest of
-            your current billing year — then $
-            {confirmUpgrade.newAnnual.toFixed(2)}/year at renewal. The new drills unlock right
-            away.
+            {confirmUpgrade.loading ? (
+              "Calculating the exact amount…"
+            ) : confirmUpgrade.amountDueNow != null ? (
+              <>
+                Your card on file will be charged{" "}
+                <span className="font-semibold text-ink">
+                  ${confirmUpgrade.amountDueNow.toFixed(2)}
+                </span>{" "}
+                now (the prorated difference for the rest of your billing year), then $
+                {confirmUpgrade.newAnnual.toFixed(2)}/year at renewal. The new drills unlock
+                right away.
+              </>
+            ) : (
+              <>
+                Your card on file will be charged the prorated difference now, then $
+                {confirmUpgrade.newAnnual.toFixed(2)}/year at renewal. The new drills unlock
+                right away.
+              </>
+            )}
           </p>
           <div className="mt-4 flex justify-center gap-3">
             <button
               onClick={() => void subscribe(confirmUpgrade.tierId)}
-              disabled={busy === confirmUpgrade.tierId}
+              disabled={busy === confirmUpgrade.tierId || confirmUpgrade.loading}
               className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white shadow-sm disabled:opacity-60"
             >
-              {busy === confirmUpgrade.tierId ? "Processing…" : "Confirm — charge my card"}
+              {busy === confirmUpgrade.tierId
+                ? "Processing…"
+                : confirmUpgrade.loading
+                  ? "Calculating…"
+                  : confirmUpgrade.amountDueNow != null
+                    ? `Confirm — pay $${confirmUpgrade.amountDueNow.toFixed(2)}`
+                    : "Confirm — charge my card"}
             </button>
             <button
               onClick={() => setConfirmUpgrade(null)}
