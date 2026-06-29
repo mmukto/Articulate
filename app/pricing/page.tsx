@@ -334,18 +334,23 @@ export default function PricingPage() {
           const isExactCurrent =
             isCurrent && tier.priceUsd > 0 && sameLevels(selectedLevels, ownedLevels);
           const perModule = drillsPerModule(tier);
+          // Once on a paid plan, move the highlight to the current tier and drop
+          // the "Popular" flag; otherwise keep highlighting the popular tier.
+          const onPaidPlan = signedIn && !!currentTier && currentTier !== "free";
+          const isHighlighted = onPaidPlan ? isCurrent : !!tier.highlight;
+          const showPopular = !!tier.highlight && !onPaidPlan;
           return (
             <div
               key={tier.id}
               className={`flex flex-col rounded-xl border p-5 ${
-                tier.highlight
+                isHighlighted
                   ? "border-accent bg-accent-wash/30 shadow-sm"
                   : "border-ink/10 bg-white/50"
               }`}
             >
               <div className="flex items-baseline justify-between">
                 <h2 className="font-serif text-lg font-semibold">{tier.name}</h2>
-                {tier.highlight ? (
+                {showPopular ? (
                   <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
                     Popular
                   </span>
