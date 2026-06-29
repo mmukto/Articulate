@@ -3,8 +3,6 @@ import Link from "next/link";
 import { ClerkProvider } from "@clerk/nextjs";
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@/components/auth";
 import { CLERK_ENABLED } from "@/lib/clerk-config";
-import AllowanceMeter from "@/components/AllowanceMeter";
-import LevelChip from "@/components/LevelChip";
 import { CheckoutResume } from "@/components/CheckoutResume";
 import { SUPPORT_MAILTO } from "@/lib/site";
 import "./globals.css";
@@ -50,6 +48,12 @@ export default function RootLayout({
               </Link>
               <div className="flex items-center gap-4">
                 <Link
+                  href="/"
+                  className="text-sm text-ink-mute transition-colors hover:text-accent"
+                >
+                  Home
+                </Link>
+                <Link
                   href="/#modules"
                   className="text-sm text-ink-mute transition-colors hover:text-accent"
                 >
@@ -78,8 +82,6 @@ export default function RootLayout({
                 </SignedOut>
                 <SignedIn>
                   <CheckoutResume />
-                  <LevelChip />
-                  <AllowanceMeter />
                   <Link
                     href="/progress"
                     className="text-sm text-ink-mute transition-colors hover:text-accent"
