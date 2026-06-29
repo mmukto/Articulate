@@ -1,7 +1,8 @@
 import type Stripe from "stripe";
+import { clerkClient } from "@clerk/nextjs/server";
 import { tierForPriceId } from "./stripe";
 import { LEVEL_IDS, parseLevels, type Level } from "./levels";
-import { setUserSubscription } from "./entitlements";
+import { readSubscription, setUserSubscription } from "./entitlements";
 import type { TierId } from "./tiers";
 
 // Single source of truth for turning a Stripe subscription into our stored
@@ -19,11 +20,20 @@ export async function applyStripeSubscription(
   const periodEnd = item?.current_period_end;
 
   // Which levels were purchased (pricing is per level). Prefer the explicit list
-  // in metadata; fall back to the first N levels by quantity if it's missing.
+  // in metadata (our checkout always sets it). If it's missing (e.g. a change
+  // made in the Stripe dashboard), PRESERVE the user's existing stored levels
+  // rather than guessing from quantity — a quantity-slice would corrupt any set
+  // that isn't a canonical prefix (e.g. owning only "senior"). Quantity is a
+  // last resort when there's nothing stored.
   let levels = parseLevels(sub.metadata?.levels);
   if (levels.length === 0) {
-    const qty = typeof item?.quantity === "number" ? item.quantity : 1;
-    levels = LEVEL_IDS.slice(0, Math.min(Math.max(qty, 1), LEVEL_IDS.length));
+    const client = await clerkClient();
+    const user = await client.users.getUser(userId);
+    levels = readSubscription(user.privateMetadata)?.levels ?? [];
+    if (levels.length === 0) {
+      const qty = typeof item?.quantity === "number" ? item.quantity : 1;
+      levels = LEVEL_IDS.slice(0, Math.min(Math.max(qty, 1), LEVEL_IDS.length));
+    }
   }
 
   const resolvedTier: TierId = active ? tier : "free";

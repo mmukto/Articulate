@@ -74,7 +74,7 @@ export function levelById(id: string | null | undefined): Level {
   return id && id in LEVEL_MAP ? (id as Level) : DEFAULT_LEVEL;
 }
 
-/** Read the user's chosen level from Clerk unsafeMetadata (default senior). */
+/** Read the user's chosen level from Clerk unsafeMetadata (default = DEFAULT_LEVEL). */
 export function readLevel(unsafeMetadata: unknown): Level {
   const l = (unsafeMetadata as { level?: string } | undefined)?.level;
   return levelById(l);

@@ -146,7 +146,7 @@ export async function getCurrentTier(): Promise<Tier> {
   return getUserTier(userId);
 }
 
-/** The user's chosen career level (Clerk unsafeMetadata.level; default senior). */
+/** The user's chosen career level (Clerk unsafeMetadata.level; default = DEFAULT_LEVEL). */
 export async function getUserLevel(userId: string): Promise<Level> {
   const client = await clerkClient();
   const user = await client.users.getUser(userId);

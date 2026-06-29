@@ -91,12 +91,16 @@ export async function POST(req: NextRequest) {
         items: [{ id: itemId, price: priceId, quantity }],
         // Invoice and charge the prorated upgrade now, not on the next cycle.
         proration_behavior: "always_invoice",
+        // Upgrading implies they want to keep the plan — clear any scheduled
+        // cancellation so Stripe and our metadata don't disagree.
+        cancel_at_period_end: false,
         metadata,
       });
       // Reflect immediately; the subscription.updated webhook also confirms.
       await setUserSubscription(userId, {
         tier: tier.id,
         levels,
+        cancelAtPeriodEnd: false,
         expiresAt: sub!.expiresAt,
         stripeCustomerId: sub!.stripeCustomerId,
         stripeSubscriptionId: sub!.stripeSubscriptionId,

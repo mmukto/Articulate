@@ -39,7 +39,10 @@ export function ModuleDrills({
     purchasedLevels.length > 0 && !purchasedLevels.includes(pref)
       ? purchasedLevels[purchasedLevels.length - 1]
       : pref;
-  const level = override ?? defaultLevel;
+  // Free users are locked to one level, so their view follows the SAVED level
+  // (ignoring transient picker overrides) — this keeps the client in lock-step
+  // with the server's per-level gate. Paid users switch their view instantly.
+  const level = purchasedLevels.length === 0 ? defaultLevel : override ?? defaultLevel;
   const levelName = LEVEL_MAP[level].name;
 
   const levelPurchased = purchasedLevels.includes(level);

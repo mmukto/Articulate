@@ -53,11 +53,6 @@ function readMeter(privateMetadata: unknown): Meter | null {
   };
 }
 
-/** Current AI spend (USD) within the active window — used for cancellation refund math. */
-export function readSpentUsd(privateMetadata: unknown): number {
-  return readMeter(privateMetadata)?.spentUsd ?? 0;
-}
-
 const round6 = (n: number) => Math.round(n * 1_000_000) / 1_000_000;
 
 async function writeMeter(
@@ -179,7 +174,10 @@ export async function getUsageSummary(userId: string): Promise<UsageSummary> {
   const user = await client.users.getUser(userId);
   const tier = tierForUser(user);
   const levels = levelsForUser(user);
-  const subscription = readSubscription(user.privateMetadata);
+  const comp = isCompUser(user);
+  // Comp accounts get access regardless of any (possibly stale) subscription, so
+  // don't surface its cancel/period-end state for them.
+  const subscription = comp ? null : readSubscription(user.privateMetadata);
   const meter = readMeter(user.privateMetadata);
   const now = Date.now();
 
@@ -199,7 +197,7 @@ export async function getUsageSummary(userId: string): Promise<UsageSummary> {
     accessUntil: subscription?.expiresAt ?? null,
     spentUsd: round6(spentUsd),
     budgetUsd,
-    percentUsed: Math.min(100, Math.round((spentUsd / budgetUsd) * 100)),
+    percentUsed: budgetUsd > 0 ? Math.min(100, Math.round((spentUsd / budgetUsd) * 100)) : 0,
     daysLeft: Math.max(0, Math.ceil((windowStartedAt + WINDOW_MS - now) / DAY_MS)),
   };
 }
