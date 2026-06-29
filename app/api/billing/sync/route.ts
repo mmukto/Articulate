@@ -65,6 +65,10 @@ export async function POST(req: NextRequest) {
       for (const sub of subs.data) {
         const active = sub.status === "active" || sub.status === "trialing";
         if (!active) continue;
+        // Only recover a subscription that BELONGS to this user. Matching by
+        // email alone would wrongly pull in a subscription left over from a
+        // different (e.g. deleted) account that happened to share the email.
+        if (sub.metadata?.userId !== userId) continue;
         if (!best || sub.created > best.sub.created) best = { sub, customer: customer.id };
       }
     }
