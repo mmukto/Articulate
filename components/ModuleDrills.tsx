@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { Module } from "@/lib/types";
-import { LEVEL_MAP, readLevel, type Level } from "@/lib/levels";
+import { LEVEL_MAP, readLevel, hasChosenLevel, type Level } from "@/lib/levels";
 import { FREE_MODULE_LIMIT } from "@/lib/tiers";
 import { useMaybeUser } from "@/components/auth";
 import { DrillPractice } from "@/components/DrillPractice";
@@ -47,6 +47,9 @@ export function ModuleDrills({
   // levels get their full count on every module.
   const inFreeModules = module.number <= FREE_MODULE_LIMIT;
   const allowed = levelPurchased ? tierCount : inFreeModules ? freeCount : 0;
+  // Free plans are locked to one level: once a free user has chosen, they can't
+  // switch (paid users switch freely among their levels).
+  const lockPicker = purchasedLevels.length === 0 && hasChosenLevel(user?.unsafeMetadata);
 
   const levelDrills = module.drills.filter((d) => (d.level ?? "senior") === level);
   const unlocked = levelDrills.slice(0, allowed);
@@ -55,7 +58,7 @@ export function ModuleDrills({
   return (
     <div className="space-y-6">
       {/* Level switcher / onboarding */}
-      <LevelPicker value={level} onChange={setOverride} />
+      <LevelPicker value={level} onChange={setOverride} locked={lockPicker} />
 
       {/* Drills for the chosen level */}
       {levelDrills.length === 0 ? (

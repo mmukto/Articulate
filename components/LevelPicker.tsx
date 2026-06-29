@@ -19,10 +19,13 @@ export function LevelPicker({
   value,
   onChange,
   heading,
+  locked = false,
 }: {
   value?: Level;
   onChange?: (level: Level) => void;
   heading?: string;
+  /** When true, the level can't be changed (free plans are locked to one level). */
+  locked?: boolean;
 }) {
   const { user } = useMaybeUser();
   const [internal, setInternal] = useState<Level | null>(null);
@@ -31,6 +34,7 @@ export function LevelPicker({
   const [saving, setSaving] = useState(false);
 
   async function pick(next: Level) {
+    if (locked) return;
     setInternal(next);
     onChange?.(next);
     if (!user) return;
@@ -56,25 +60,42 @@ export function LevelPicker({
         </p>
       )}
       <div className="flex flex-wrap gap-2">
-        {LEVELS.map((l) => (
-          <button
-            key={l.id}
-            type="button"
-            onClick={() => pick(l.id)}
-            disabled={saving}
-            title={l.blurb}
-            className={`rounded-md border px-3 py-1.5 text-sm transition-colors disabled:opacity-60 ${
-              current === l.id
-                ? "border-accent bg-accent text-white"
-                : "border-ink/15 text-ink-soft hover:border-accent hover:text-accent"
-            }`}
-          >
-            {l.name}
-          </button>
-        ))}
+        {LEVELS.map((l) => {
+          const isCurrent = current === l.id;
+          // When locked, only show the current level (free plans = one level).
+          if (locked && !isCurrent) return null;
+          return (
+            <button
+              key={l.id}
+              type="button"
+              onClick={() => pick(l.id)}
+              disabled={saving || locked}
+              title={l.blurb}
+              className={`rounded-md border px-3 py-1.5 text-sm transition-colors disabled:opacity-100 ${
+                locked ? "cursor-default" : "disabled:opacity-60"
+              } ${
+                isCurrent
+                  ? "border-accent bg-accent text-white"
+                  : "border-ink/15 text-ink-soft hover:border-accent hover:text-accent"
+              }`}
+            >
+              {l.name}
+            </button>
+          );
+        })}
       </div>
       <p className="mt-2 text-xs text-ink-mute">{LEVEL_MAP[current].blurb}</p>
-      <LevelHelp />
+      {locked ? (
+        <p className="mt-1 text-xs text-ink-mute">
+          Free plans are locked to one level.{" "}
+          <a href="/pricing" className="text-accent hover:underline">
+            Upgrade
+          </a>{" "}
+          to switch or add levels.
+        </p>
+      ) : (
+        <LevelHelp />
+      )}
     </div>
   );
 }

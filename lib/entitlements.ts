@@ -157,14 +157,22 @@ export interface Entitlements {
   tier: Tier;
   /** Career levels the user has paid for (all of them for comp accounts). */
   levels: Level[];
+  /** The user's chosen career level (preference) — for free users this is the
+   *  single level the sampler is locked to. */
+  level: Level;
   comp: boolean;
 }
 
-/** Tier + purchased levels + comp flag in one Clerk read (AI routes, gating). */
+/** Tier + purchased levels + chosen level + comp flag in one Clerk read. */
 export async function getUserEntitlements(userId: string): Promise<Entitlements> {
   const client = await clerkClient();
   const user = await client.users.getUser(userId);
-  return { tier: tierForUser(user), levels: levelsForUser(user), comp: isCompUser(user) };
+  return {
+    tier: tierForUser(user),
+    levels: levelsForUser(user),
+    level: readLevel(user.unsafeMetadata),
+    comp: isCompUser(user),
+  };
 }
 
 /**
@@ -172,9 +180,10 @@ export async function getUserEntitlements(userId: string): Promise<Entitlements>
  * no one is signed in — gating then shows only the Free sampler.
  */
 export async function getCurrentEntitlements(): Promise<Entitlements> {
-  if (!CLERK_ENABLED) return { tier: FREE_TIER, levels: [], comp: false };
+  const guest = { tier: FREE_TIER, levels: [], level: DEFAULT_LEVEL, comp: false };
+  if (!CLERK_ENABLED) return guest;
   const { userId } = await auth();
-  if (!userId) return { tier: FREE_TIER, levels: [], comp: false };
+  if (!userId) return guest;
   return getUserEntitlements(userId);
 }
 

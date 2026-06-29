@@ -4,7 +4,7 @@ import { SignedIn, SignedOut, SignInButton, SignUpButton } from "@/components/au
 import { MODULES, MODULE_MAP } from "@/lib/course";
 import { ModuleDrills } from "@/components/ModuleDrills";
 import { getCurrentEntitlements } from "@/lib/entitlements";
-import { drillsPerModule, FREE_DRILLS_PER_MODULE } from "@/lib/tiers";
+import { drillsPerModule, FREE_DRILLS_PER_MODULE, FREE_MODULE_LIMIT } from "@/lib/tiers";
 
 export function generateStaticParams() {
   return MODULES.map((m) => ({ slug: m.slug }));
@@ -32,6 +32,10 @@ export default async function ModulePage({ params }: { params: { slug: string } 
   // filters by the chosen career level and locks the rest.
   const ent = await getCurrentEntitlements();
   const tierCount = drillsPerModule(ent.tier);
+  // Free sign-up (and signed-out visitors) reach only the first few modules;
+  // the rest — lesson, examples, and drills — require a paid plan.
+  const hasPaid = ent.comp || ent.levels.length > 0;
+  const moduleLocked = !hasPaid && module.number > FREE_MODULE_LIMIT;
 
   return (
     <article className="space-y-12">
@@ -68,6 +72,27 @@ export default async function ModulePage({ params }: { params: { slug: string } 
         </div>
       </header>
 
+      {moduleLocked ? (
+        <section className="rounded-xl border border-ink/10 bg-white/50 p-8 text-center">
+          <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-accent-wash text-2xl">
+            🔒
+          </div>
+          <h2 className="mt-3 font-serif text-2xl font-semibold tracking-tight">
+            Module {module.number} is part of a paid plan
+          </h2>
+          <p className="mx-auto mt-2 max-w-md text-ink-soft">
+            Free sign-up includes the first {FREE_MODULE_LIMIT} modules. Subscribe to unlock this
+            module — the lesson, examples, and AI-coached drills — and the rest of the course.
+          </p>
+          <Link
+            href="/pricing"
+            className="mt-5 inline-block rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-transform hover:-translate-y-0.5"
+          >
+            See plans
+          </Link>
+        </section>
+      ) : (
+        <>
       {/* Lesson */}
       <section className="prose-lesson">
         <p className="font-serif text-lg leading-relaxed text-ink">
@@ -174,6 +199,8 @@ export default async function ModulePage({ params }: { params: { slug: string } 
           </div>
         </SignedOut>
       </section>
+        </>
+      )}
 
       {/* Nav */}
       <nav className="flex items-center justify-between border-t border-ink/10 pt-6">

@@ -81,10 +81,13 @@ export async function POST(req: NextRequest) {
     if (!ent.comp) {
       const purchased = ent.levels.includes(found.level);
       // Paid levels: the tier's full count, all modules. Free sign-up: the
-      // 1-drill sampler, but only in the first FREE_MODULE_LIMIT modules.
+      // 1-drill sampler, only in the first FREE_MODULE_LIMIT modules and only at
+      // the user's chosen (locked) level.
+      const freeOk =
+        found.module.number <= FREE_MODULE_LIMIT && found.level === ent.level;
       const allowed = purchased
         ? drillsPerModule(ent.tier)
-        : found.module.number <= FREE_MODULE_LIMIT
+        : freeOk
           ? FREE_DRILLS_PER_MODULE
           : 0;
       if (found.levelIndex >= allowed) {
@@ -92,7 +95,9 @@ export async function POST(req: NextRequest) {
           ? "This drill is part of a higher plan. Upgrade to unlock it."
           : found.module.number > FREE_MODULE_LIMIT
             ? `Free practice covers the first ${FREE_MODULE_LIMIT} modules. Subscribe to unlock the full course.`
-            : `Subscribe to unlock all drills at the ${LEVEL_MAP[found.level].name} level.`;
+            : found.level !== ent.level
+              ? "Free practice is locked to your chosen level. Subscribe to unlock other levels."
+              : `Subscribe to unlock all drills at the ${LEVEL_MAP[found.level].name} level.`;
         return NextResponse.json({ error }, { status: 403 });
       }
     }
