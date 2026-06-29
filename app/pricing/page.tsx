@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { SignInButton, SignUpButton } from "@/components/auth";
+import { SignInButton, SignUpButton, useMaybeUser } from "@/components/auth";
 import { stashCheckout } from "@/components/CheckoutResume";
 import { TIERS, drillsPerModule, tierById, type TierId } from "@/lib/tiers";
-import { LEVELS, LEVEL_MAP, DEFAULT_LEVEL, type Level } from "@/lib/levels";
+import { LEVELS, LEVEL_MAP, DEFAULT_LEVEL, readLevel, type Level } from "@/lib/levels";
 import { SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/lib/site";
 
 type CancelBreakdown = {
@@ -108,6 +108,21 @@ export default function PricingPage() {
       cancelled = true;
     };
   }, []);
+
+  // Keep the practice level pointed at a level the user owns. If their saved
+  // preference isn't one they pay for, switch it to their highest owned level —
+  // so the header chip, progress page, and module drills all reflect what they
+  // bought instead of defaulting to a lower level.
+  const { user } = useMaybeUser();
+  useEffect(() => {
+    if (!user || ownedLevels.length === 0) return;
+    const pref = readLevel(user.unsafeMetadata);
+    if (ownedLevels.includes(pref)) return;
+    const target = ownedLevels[ownedLevels.length - 1];
+    user
+      .update({ unsafeMetadata: { ...(user.unsafeMetadata ?? {}), level: target } })
+      .catch(() => {});
+  }, [user, ownedLevels]);
 
   function toggleLevel(id: Level) {
     // Levels you already pay for are locked on — you can add levels, but
@@ -219,6 +234,10 @@ export default function PricingPage() {
       if (!res.ok || !data.canceled) throw new Error(data?.error || "Couldn't cancel.");
       setCancelData(null);
       setCurrentTier("free");
+      // Reverted to Free — clear owned levels so the chooser unlocks, and reset
+      // the selection to a clean single level.
+      setOwnedLevels([]);
+      setSelectedLevels([DEFAULT_LEVEL]);
       setNotice(
         `Your ${data.tierName} plan is canceled. A refund of $${Number(data.refund).toFixed(2)} is on its way.`,
       );
@@ -333,8 +352,9 @@ export default function PricingPage() {
             {cancelData.levelCount > 1 ? ` (${cancelData.levelCount} levels)` : ""}?
           </h3>
           <p className="mt-1 text-ink-soft">
-            Cancellation is immediate. Your refund is your annual price minus the AI
-            coaching you’ve used and the drills you’ve completed:
+            Cancellation is immediate — you’ll revert to the free plan and keep only the free
+            sampler on each level. Your refund is your annual price minus the AI coaching
+            you’ve used and the drills you’ve completed:
           </p>
           <dl className="mx-auto mt-3 max-w-xs space-y-1 text-ink">
             <div className="flex justify-between">

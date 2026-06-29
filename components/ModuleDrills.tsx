@@ -30,7 +30,15 @@ export function ModuleDrills({
   const { user } = useMaybeUser();
   const [override, setOverride] = useState<Level | null>(null);
 
-  const level = override ?? readLevel(user?.unsafeMetadata);
+  // Default to a level the user actually paid for. If their saved preference
+  // isn't one they own (e.g. they bought a higher level but the preference still
+  // sits at the default), show their highest owned level instead of a lower one.
+  const pref = readLevel(user?.unsafeMetadata);
+  const defaultLevel =
+    purchasedLevels.length > 0 && !purchasedLevels.includes(pref)
+      ? purchasedLevels[purchasedLevels.length - 1]
+      : pref;
+  const level = override ?? defaultLevel;
   const levelName = LEVEL_MAP[level].name;
 
   const levelPurchased = purchasedLevels.includes(level);
