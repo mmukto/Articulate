@@ -40,8 +40,8 @@ const RAW_TIERS: Omit<Tier, "aiBudgetUsd">[] = [
     id: "free",
     name: "Free",
     priceUsd: 0,
-    drillTotal: 10,
-    blurb: "1 drill per module — try the method.",
+    drillTotal: 3,
+    blurb: "First 3 modules, 1 drill each — try the method.",
   },
   {
     id: "starter",
@@ -96,8 +96,12 @@ export function drillsPerModule(tier: Tier): number {
   return Math.ceil(tier.drillTotal / MODULE_COUNT);
 }
 
-/** Per-module drills the Free tier unlocks — the sampler shown on every level. */
-export const FREE_DRILLS_PER_MODULE = Math.ceil(FREE_TIER.drillTotal / MODULE_COUNT);
+/** Per-module drills the Free sampler unlocks (1 drill per module). */
+export const FREE_DRILLS_PER_MODULE = 1;
+
+/** Free sign-up gives the sampler only in the first N modules; the rest need a
+ *  paid plan. (Modules are numbered 1..10 by position.) */
+export const FREE_MODULE_LIMIT = 3;
 
 /**
  * Drills unlocked per module *at a given career level*. Pricing is per level:

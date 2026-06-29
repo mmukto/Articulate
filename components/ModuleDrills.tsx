@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { Module } from "@/lib/types";
 import { LEVEL_MAP, readLevel, type Level } from "@/lib/levels";
+import { FREE_MODULE_LIMIT } from "@/lib/tiers";
 import { useMaybeUser } from "@/components/auth";
 import { DrillPractice } from "@/components/DrillPractice";
 import { LevelPicker } from "@/components/LevelPicker";
@@ -42,7 +43,10 @@ export function ModuleDrills({
   const levelName = LEVEL_MAP[level].name;
 
   const levelPurchased = purchasedLevels.includes(level);
-  const allowed = levelPurchased ? tierCount : freeCount;
+  // Free sign-up gets the 1-drill sampler only in the first few modules; paid
+  // levels get their full count on every module.
+  const inFreeModules = module.number <= FREE_MODULE_LIMIT;
+  const allowed = levelPurchased ? tierCount : inFreeModules ? freeCount : 0;
 
   const levelDrills = module.drills.filter((d) => (d.level ?? "senior") === level);
   const unlocked = levelDrills.slice(0, allowed);
@@ -68,8 +72,11 @@ export function ModuleDrills({
             <div className="rounded-xl border border-dashed border-ink/15 bg-white/40 p-6">
               <div className="flex items-center gap-2 text-sm font-semibold text-ink">
                 <span aria-hidden>🔒</span>
-                {locked.length} more {levelName.toLowerCase()} drill
-                {locked.length === 1 ? "" : "s"} in this module
+                {unlocked.length === 0
+                  ? `${levelName} practice in this module is for subscribers`
+                  : `${locked.length} more ${levelName.toLowerCase()} drill${
+                      locked.length === 1 ? "" : "s"
+                    } in this module`}
               </div>
               <ul className="mt-2 space-y-1 text-sm text-ink-mute">
                 {locked.slice(0, 3).map((d) => (
@@ -85,17 +92,23 @@ export function ModuleDrills({
                   <span className="font-medium">{levelName}</span> level. Upgrade to unlock more
                   drills here.
                 </p>
+              ) : inFreeModules ? (
+                <p className="mt-3 text-sm text-ink-soft">
+                  Free sign-up includes one drill in each of the first {FREE_MODULE_LIMIT}{" "}
+                  modules. Subscribe to unlock every drill at the{" "}
+                  <span className="font-medium">{levelName}</span> level.
+                </p>
               ) : (
                 <p className="mt-3 text-sm text-ink-soft">
-                  You’re previewing the <span className="font-medium">{levelName}</span> level.
-                  Pricing is per level — add this level to a plan to unlock all its drills.
+                  Free practice covers the first {FREE_MODULE_LIMIT} modules. Subscribe to unlock
+                  this module and the rest of the course.
                 </p>
               )}
               <Link
                 href="/pricing"
                 className="mt-4 inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-white shadow-sm transition-transform hover:-translate-y-0.5"
               >
-                {levelPurchased ? "See plans" : `Unlock ${levelName}`}
+                {levelPurchased ? "See plans" : "Subscribe"}
               </Link>
             </div>
           ) : null}

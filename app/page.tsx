@@ -84,7 +84,7 @@ export default function HomePage() {
                 Create a free account
               </button>
             </SignUpButton>{" "}
-            to practice the drills, get AI feedback, and track your progress.
+            to try the first three modules free — one AI-coached drill each, at your level.
           </p>
         </SignedOut>
         <ol className="mt-6 space-y-3">

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { SignInButton, SignUpButton, useMaybeUser } from "@/components/auth";
 import { stashCheckout } from "@/components/CheckoutResume";
-import { TIERS, drillsPerModule, tierById, type TierId } from "@/lib/tiers";
+import { TIERS, drillsPerModule, tierById, FREE_MODULE_LIMIT, type TierId } from "@/lib/tiers";
 import { LEVELS, LEVEL_MAP, DEFAULT_LEVEL, readLevel, type Level } from "@/lib/levels";
 import { SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/lib/site";
 
@@ -493,8 +493,16 @@ export default function PricingPage() {
               ) : null}
               <p className="mt-2 text-sm text-ink-soft">{tier.blurb}</p>
               <div className="mt-3 text-sm text-ink">
-                <span className="font-semibold">{tier.drillTotal}</span> drills
-                <span className="text-ink-mute"> / level · {perModule}/module</span>
+                {tier.priceUsd === 0 ? (
+                  <span>
+                    First {FREE_MODULE_LIMIT} modules <span className="text-ink-mute">· 1 drill each</span>
+                  </span>
+                ) : (
+                  <>
+                    <span className="font-semibold">{tier.drillTotal}</span> drills
+                    <span className="text-ink-mute"> / level · {perModule}/module</span>
+                  </>
+                )}
               </div>
 
               <div className="mt-auto space-y-2 pt-5">

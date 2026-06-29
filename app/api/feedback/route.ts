@@ -5,7 +5,7 @@ import { gradeResponse } from "@/lib/feedback";
 import { CLERK_ENABLED } from "@/lib/clerk-config";
 import { checkAccess, recordSpend, estimateCostUsd, type AccessGate } from "@/lib/limits";
 import { getUserEntitlements } from "@/lib/entitlements";
-import { unlockedPerModule } from "@/lib/tiers";
+import { drillsPerModule, FREE_DRILLS_PER_MODULE, FREE_MODULE_LIMIT } from "@/lib/tiers";
 import { LEVEL_MAP, type Level } from "@/lib/levels";
 
 // Feedback grading can take a few seconds with adaptive thinking — give it room.
@@ -78,16 +78,20 @@ export async function POST(req: NextRequest) {
     // Comp/owner accounts have full access to every drill at every level.
     if (!ent.comp) {
       const purchased = ent.levels.includes(found.level);
-      const allowed = unlockedPerModule(ent.tier, purchased);
+      // Paid levels: the tier's full count, all modules. Free sign-up: the
+      // 1-drill sampler, but only in the first FREE_MODULE_LIMIT modules.
+      const allowed = purchased
+        ? drillsPerModule(ent.tier)
+        : found.module.number <= FREE_MODULE_LIMIT
+          ? FREE_DRILLS_PER_MODULE
+          : 0;
       if (found.levelIndex >= allowed) {
-        return NextResponse.json(
-          {
-            error: purchased
-              ? "This drill is part of a higher plan. Upgrade to unlock it."
-              : `This drill is in the ${LEVEL_MAP[found.level].name} level. Unlock that level on the Plans page to practice it.`,
-          },
-          { status: 403 },
-        );
+        const error = purchased
+          ? "This drill is part of a higher plan. Upgrade to unlock it."
+          : found.module.number > FREE_MODULE_LIMIT
+            ? `Free practice covers the first ${FREE_MODULE_LIMIT} modules. Subscribe to unlock the full course.`
+            : `Subscribe to unlock all drills at the ${LEVEL_MAP[found.level].name} level.`;
+        return NextResponse.json({ error }, { status: 403 });
       }
     }
     // Enforce the per-user annual AI allowance before spending money.
