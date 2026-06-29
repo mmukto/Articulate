@@ -61,12 +61,36 @@ export async function POST(req: NextRequest) {
     sub.tier !== "free" &&
     (!sub.expiresAt || sub.expiresAt > Date.now());
   if (hasActive) {
+    // Upgrades only, no free swaps: you may ADD levels and/or move to a HIGHER
+    // tier (charged immediately), but not drop/swap an owned level or move to a
+    // lower tier in place — those require cancel + re-subscribe.
+    const ownedLevels = sub!.levels ?? [];
+    const currentTier = tierById(sub!.tier);
+    const keepsAllOwned = ownedLevels.every((l) => levels.includes(l));
+    const currentTotal = currentTier.priceUsd * Math.max(1, ownedLevels.length);
+    const newTotal = tier.priceUsd * levels.length;
+    if (!keepsAllOwned || tier.priceUsd < currentTier.priceUsd) {
+      return NextResponse.json(
+        {
+          error:
+            "To switch or drop a career level, or move to a lower plan, cancel and re-subscribe.",
+        },
+        { status: 400 },
+      );
+    }
+    if (newTotal <= currentTotal) {
+      return NextResponse.json(
+        { error: "That isn't an upgrade — you're already on this plan." },
+        { status: 400 },
+      );
+    }
     try {
       const existing = await stripe.subscriptions.retrieve(sub!.stripeSubscriptionId!);
       const itemId = existing.items.data[0]?.id;
       await stripe.subscriptions.update(sub!.stripeSubscriptionId!, {
         items: [{ id: itemId, price: priceId, quantity }],
-        proration_behavior: "create_prorations",
+        // Invoice and charge the prorated upgrade now, not on the next cycle.
+        proration_behavior: "always_invoice",
         metadata,
       });
       // Reflect immediately; the subscription.updated webhook also confirms.

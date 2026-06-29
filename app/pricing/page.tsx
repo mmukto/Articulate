@@ -101,6 +101,9 @@ export default function PricingPage() {
   }, []);
 
   function toggleLevel(id: Level) {
+    // Levels you already pay for are locked on — you can add levels, but
+    // swapping/dropping one requires cancel + re-subscribe.
+    if (ownedLevels.includes(id)) return;
     setSelectedLevels((prev) =>
       prev.includes(id) ? prev.filter((l) => l !== id) : [...prev, id],
     );
@@ -240,9 +243,11 @@ export default function PricingPage() {
                 key={l.id}
                 type="button"
                 onClick={() => toggleLevel(l.id)}
-                title={l.blurb}
+                title={owned ? "Included in your plan — switching levels needs cancel + re-subscribe" : l.blurb}
                 aria-pressed={on}
                 className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${
+                  owned ? "cursor-default" : ""
+                } ${
                   on
                     ? "border-accent bg-accent text-white"
                     : "border-ink/15 text-ink-soft hover:border-accent hover:text-accent"
@@ -328,6 +333,10 @@ export default function PricingPage() {
           const onPaidPlan = signedIn && !!currentTier && currentTier !== "free";
           const isHighlighted = onPaidPlan ? isCurrent : !!tier.highlight;
           const showPopular = !!tier.highlight && !onPaidPlan;
+          // A lower tier than the current one can't be switched to in place —
+          // downgrades require cancel + re-subscribe.
+          const isDowngrade =
+            onPaidPlan && !isCurrent && tier.priceUsd < tierById(currentTier).priceUsd;
           return (
             <div
               key={tier.id}
@@ -396,6 +405,10 @@ export default function PricingPage() {
                       <div className="rounded-md border border-ink/15 px-4 py-2 text-center text-sm font-medium text-ink-mute">
                         Current plan
                       </div>
+                    ) : isDowngrade ? (
+                      <div className="rounded-md border border-ink/10 px-4 py-2 text-center text-xs text-ink-mute">
+                        Cancel to move to a lower plan
+                      </div>
                     ) : (
                       <button
                         onClick={() => subscribe(tier.id)}
@@ -408,11 +421,11 @@ export default function PricingPage() {
                             ? "Pick a level above"
                             : `${
                                 isCurrent
-                                  ? "Update"
-                                  : currentTier && currentTier !== "free"
-                                    ? `Switch to ${tier.name}`
+                                  ? "Add levels"
+                                  : onPaidPlan
+                                    ? `Upgrade to ${tier.name}`
                                     : `Choose ${tier.name}`
-                              } — $${(tier.priceUsd * levelCount).toFixed(2)}`}
+                              } — $${(tier.priceUsd * levelCount).toFixed(2)}/yr`}
                       </button>
                     )}
                     {isCurrent ? (
