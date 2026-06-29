@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ClerkProvider } from "@clerk/nextjs";
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@/components/auth";
 import { CLERK_ENABLED } from "@/lib/clerk-config";
-import { CheckoutResume } from "@/components/CheckoutResume";
+import { CheckoutResume, LevelResume } from "@/components/CheckoutResume";
 import { SUPPORT_MAILTO } from "@/lib/site";
 import "./globals.css";
 
@@ -82,6 +82,7 @@ export default function RootLayout({
                 </SignedOut>
                 <SignedIn>
                   <CheckoutResume />
+                  <LevelResume />
                   <Link
                     href="/progress"
                     className="text-sm text-ink-mute transition-colors hover:text-accent"

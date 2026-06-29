@@ -30,3 +30,7 @@ next-env.d.ts.bak
 
 # vercel
 .vercel
+
+# secrets — never commit API keys (keep them in a password manager, not the repo)
+/Stripe/
+*.key

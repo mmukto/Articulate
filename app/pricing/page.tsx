@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { SignInButton, SignUpButton, useMaybeUser } from "@/components/auth";
-import { stashCheckout } from "@/components/CheckoutResume";
+import { stashCheckout, stashLevel } from "@/components/CheckoutResume";
 import { TIERS, drillsPerModule, tierById, FREE_MODULE_LIMIT, type TierId } from "@/lib/tiers";
 import { LEVELS, LEVEL_MAP, DEFAULT_LEVEL, readLevel, type Level } from "@/lib/levels";
 import { SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/lib/site";
@@ -513,7 +513,12 @@ export default function PricingPage() {
                   // Signed out: choosing a plan starts sign-up, then resumes here.
                   tier.priceUsd === 0 ? (
                     <SignUpButton mode="modal" forceRedirectUrl="/">
-                      <button className="w-full rounded-md border border-ink/15 px-4 py-2 text-sm font-medium text-ink-soft transition-colors hover:border-accent hover:text-accent">
+                      <button
+                        onClick={() =>
+                          stashLevel(selectedLevels[selectedLevels.length - 1] ?? DEFAULT_LEVEL)
+                        }
+                        className="w-full rounded-md border border-ink/15 px-4 py-2 text-sm font-medium text-ink-soft transition-colors hover:border-accent hover:text-accent"
+                      >
                         Sign up free
                       </button>
                     </SignUpButton>
