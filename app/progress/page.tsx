@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { SignedIn, SignedOut, SignInButton, SignUpButton } from "@/components/auth";
 import { ProgressDashboard } from "@/components/ProgressDashboard";
-import { LevelPicker } from "@/components/LevelPicker";
+import { CurrentLevel } from "@/components/CurrentLevel";
 
 export const metadata = {
   title: "My progress · iArticulate",
@@ -33,10 +33,11 @@ export default function ProgressPage() {
               Your career level
             </h2>
             <p className="mt-1 text-sm text-ink-soft">
-              Drills and AI coaching adjust to match your stage — change it anytime.
+              Drills and AI coaching are calibrated to this. Change it on any module or the
+              Plans page.
             </p>
             <div className="mt-3">
-              <LevelPicker heading="Current level" />
+              <CurrentLevel />
             </div>
           </section>
           <ProgressDashboard />
