@@ -134,17 +134,6 @@ export default function PricingPage() {
   }
 
 
-  async function manage() {
-    setError(null);
-    setBusy("manage");
-    try {
-      await post("/api/billing/portal");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't open the billing portal.");
-      setBusy(null);
-    }
-  }
-
   // Fetch the refund preview (no charge yet) and show the confirmation panel.
   async function openCancel() {
     setError(null);
@@ -427,20 +416,13 @@ export default function PricingPage() {
                       </button>
                     )}
                     {isCurrent ? (
-                      <div className="space-y-1 text-center">
+                      <div className="text-center">
                         <button
                           onClick={openCancel}
                           disabled={busy === "cancel"}
                           className="block w-full text-xs text-red-700 underline-offset-2 hover:underline disabled:opacity-60"
                         >
                           {busy === "cancel" ? "Loading…" : "Cancel subscription"}
-                        </button>
-                        <button
-                          onClick={manage}
-                          disabled={busy === "manage"}
-                          className="block w-full text-xs text-ink-mute underline-offset-2 hover:text-accent hover:underline disabled:opacity-60"
-                        >
-                          {busy === "manage" ? "Opening…" : "Manage billing"}
                         </button>
                       </div>
                     ) : null}
