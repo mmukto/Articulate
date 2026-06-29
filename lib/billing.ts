@@ -33,6 +33,7 @@ export async function applyStripeSubscription(
     levels: resolvedLevels,
     // Access lasts through the paid period; effectiveTier() reverts to Free after.
     expiresAt: periodEnd ? periodEnd * 1000 : undefined,
+    cancelAtPeriodEnd: sub.cancel_at_period_end === true ? true : undefined,
     stripeCustomerId: customerId ?? (sub.customer as string),
     stripeSubscriptionId: sub.id,
   });

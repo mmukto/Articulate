@@ -1,6 +1,12 @@
 import { clerkClient } from "@clerk/nextjs/server";
 import type { Usage } from "./feedback";
-import { aiBudgetUsdForUser, isCompUser, levelsForUser, tierForUser } from "./entitlements";
+import {
+  aiBudgetUsdForUser,
+  isCompUser,
+  levelsForUser,
+  readSubscription,
+  tierForUser,
+} from "./entitlements";
 import { readLevel, type Level } from "./levels";
 import { markPracticed } from "./practiced";
 
@@ -158,6 +164,10 @@ export interface UsageSummary {
   levelCount: number;
   /** The user's currently chosen career level (preference, not entitlement). */
   currentLevel: Level;
+  /** True if the paid plan is set to cancel at period end (access until accessUntil). */
+  cancelAtPeriodEnd: boolean;
+  /** Epoch ms the paid access ends (period end), when known. */
+  accessUntil: number | null;
   spentUsd: number;
   budgetUsd: number;
   percentUsed: number; // 0–100, rounded
@@ -169,6 +179,7 @@ export async function getUsageSummary(userId: string): Promise<UsageSummary> {
   const user = await client.users.getUser(userId);
   const tier = tierForUser(user);
   const levels = levelsForUser(user);
+  const subscription = readSubscription(user.privateMetadata);
   const meter = readMeter(user.privateMetadata);
   const now = Date.now();
 
@@ -184,6 +195,8 @@ export async function getUsageSummary(userId: string): Promise<UsageSummary> {
     levels,
     levelCount: levels.length,
     currentLevel: readLevel(user.unsafeMetadata),
+    cancelAtPeriodEnd: subscription?.cancelAtPeriodEnd === true,
+    accessUntil: subscription?.expiresAt ?? null,
     spentUsd: round6(spentUsd),
     budgetUsd,
     percentUsed: Math.min(100, Math.round((spentUsd / budgetUsd) * 100)),

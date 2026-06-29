@@ -16,6 +16,9 @@ export interface Subscription {
   levels?: Level[];
   /** Epoch ms when paid access lapses; after this the user reverts to Free. */
   expiresAt?: number;
+  /** True once the user has scheduled cancellation: access continues until
+   *  expiresAt, then it won't renew. */
+  cancelAtPeriodEnd?: boolean;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
   updatedAt?: number;
@@ -29,6 +32,7 @@ export function readSubscription(privateMetadata: unknown): Subscription | null 
     tier: s.tier as TierId,
     levels: Array.isArray(s.levels) ? parseLevels(s.levels) : undefined,
     expiresAt: typeof s.expiresAt === "number" ? s.expiresAt : undefined,
+    cancelAtPeriodEnd: s.cancelAtPeriodEnd === true ? true : undefined,
     stripeCustomerId:
       typeof s.stripeCustomerId === "string" ? s.stripeCustomerId : undefined,
     stripeSubscriptionId:

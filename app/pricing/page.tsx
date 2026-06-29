@@ -7,16 +7,14 @@ import { TIERS, drillsPerModule, tierById, type TierId } from "@/lib/tiers";
 import { LEVELS, LEVEL_MAP, DEFAULT_LEVEL, readLevel, type Level } from "@/lib/levels";
 import { SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/lib/site";
 
-type CancelBreakdown = {
+type CancelInfo = {
   tierName: string;
   levelCount: number;
-  price: number;
-  aiCostUsd: number;
-  drillsCompleted: number;
-  drillTotal: number;
-  drillCharge: number;
-  refund: number;
+  accessUntil: number; // epoch ms the paid access ends
 };
+
+const fmtDate = (ms: number) =>
+  ms ? new Date(ms).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }) : "your renewal date";
 
 const sameLevels = (a: Level[], b: Level[]) =>
   a.length === b.length && a.every((x) => b.includes(x));
@@ -29,7 +27,10 @@ export default function PricingPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [cancelData, setCancelData] = useState<CancelBreakdown | null>(null);
+  const [cancelData, setCancelData] = useState<CancelInfo | null>(null);
+  // Whether the current paid plan is set to cancel at period end, and when.
+  const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState(false);
+  const [accessUntil, setAccessUntil] = useState<number | null>(null);
   // Set when a subscriber is about to upgrade in place (charges the card on
   // file) — drives the confirm-before-charge dialog.
   const [confirmUpgrade, setConfirmUpgrade] = useState<{
@@ -60,6 +61,8 @@ export default function PricingPage() {
         if (cancelled || !d?.enabled) return null;
         setSignedIn(true);
         setCurrentTier(d.tierId as TierId);
+        setCancelAtPeriodEnd(d.cancelAtPeriodEnd === true);
+        setAccessUntil(typeof d.accessUntil === "number" ? d.accessUntil : null);
         const owned = (Array.isArray(d.levels) ? d.levels : []) as Level[];
         setOwnedLevels(owned);
         // Preselect the levels they own, or their current career level.
@@ -205,7 +208,7 @@ export default function PricingPage() {
   }
 
 
-  // Fetch the refund preview (no charge yet) and show the confirmation panel.
+  // Fetch the cancel preview (no change yet) and show the confirmation panel.
   async function openCancel() {
     setError(null);
     setBusy("cancel");
@@ -213,7 +216,7 @@ export default function PricingPage() {
       const res = await fetch("/api/billing/cancel", { method: "POST" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Couldn't load cancellation details.");
-      setCancelData(data as CancelBreakdown);
+      setCancelData(data as CancelInfo);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
@@ -233,14 +236,32 @@ export default function PricingPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.canceled) throw new Error(data?.error || "Couldn't cancel.");
       setCancelData(null);
-      setCurrentTier("free");
-      // Reverted to Free — clear owned levels so the chooser unlocks, and reset
-      // the selection to a clean single level.
-      setOwnedLevels([]);
-      setSelectedLevels([DEFAULT_LEVEL]);
+      // Access continues until period end — the plan stays current, just won't renew.
+      setCancelAtPeriodEnd(true);
+      if (typeof data.accessUntil === "number") setAccessUntil(data.accessUntil);
       setNotice(
-        `Your ${data.tierName} plan is canceled. A refund of $${Number(data.refund).toFixed(2)} is on its way.`,
+        `Your ${data.tierName} plan will end on ${fmtDate(Number(data.accessUntil))}. You keep full access until then.`,
       );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function resumePlan() {
+    setError(null);
+    setBusy("resume");
+    try {
+      const res = await fetch("/api/billing/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resume: true }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.resumed) throw new Error(data?.error || "Couldn't resume.");
+      setCancelAtPeriodEnd(false);
+      setNotice(`Your ${data.tierName} plan will continue and renew as usual.`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
@@ -352,37 +373,18 @@ export default function PricingPage() {
             {cancelData.levelCount > 1 ? ` (${cancelData.levelCount} levels)` : ""}?
           </h3>
           <p className="mt-1 text-ink-soft">
-            Cancellation is immediate — you’ll revert to the free plan and keep only the free
-            sampler on each level. Your refund is your annual price minus the AI coaching
-            you’ve used and the drills you’ve completed:
+            You’ll keep full access until{" "}
+            <span className="font-medium text-ink">{fmtDate(cancelData.accessUntil)}</span>, then
+            your plan won’t renew. Annual plans aren’t refundable, so there’s no charge or refund
+            now — and you can resume anytime before that date.
           </p>
-          <dl className="mx-auto mt-3 max-w-xs space-y-1 text-ink">
-            <div className="flex justify-between">
-              <dt>Annual price</dt>
-              <dd>${cancelData.price.toFixed(2)}</dd>
-            </div>
-            <div className="flex justify-between text-ink-mute">
-              <dt>− AI usage</dt>
-              <dd>−${cancelData.aiCostUsd.toFixed(2)}</dd>
-            </div>
-            <div className="flex justify-between text-ink-mute">
-              <dt>
-                − Drills used ({cancelData.drillsCompleted}/{cancelData.drillTotal})
-              </dt>
-              <dd>−${cancelData.drillCharge.toFixed(2)}</dd>
-            </div>
-            <div className="flex justify-between border-t border-red-200 pt-1 font-semibold">
-              <dt>Refund</dt>
-              <dd>${cancelData.refund.toFixed(2)}</dd>
-            </div>
-          </dl>
           <div className="mt-4 flex justify-center gap-3">
             <button
               onClick={confirmCancel}
               disabled={busy === "cancel-confirm"}
               className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm disabled:opacity-60"
             >
-              {busy === "cancel-confirm" ? "Canceling…" : "Confirm cancellation"}
+              {busy === "cancel-confirm" ? "Canceling…" : "Cancel at period end"}
             </button>
             <button
               onClick={() => setCancelData(null)}
@@ -551,14 +553,29 @@ export default function PricingPage() {
                       </button>
                     )}
                     {isCurrent ? (
-                      <div className="text-center">
-                        <button
-                          onClick={openCancel}
-                          disabled={busy === "cancel"}
-                          className="block w-full text-xs text-red-700 underline-offset-2 hover:underline disabled:opacity-60"
-                        >
-                          {busy === "cancel" ? "Loading…" : "Cancel subscription"}
-                        </button>
+                      <div className="space-y-1 text-center">
+                        {cancelAtPeriodEnd ? (
+                          <>
+                            <p className="text-xs text-ink-mute">
+                              Ends {fmtDate(accessUntil ?? 0)} — won’t renew
+                            </p>
+                            <button
+                              onClick={resumePlan}
+                              disabled={busy === "resume"}
+                              className="block w-full text-xs text-accent underline-offset-2 hover:underline disabled:opacity-60"
+                            >
+                              {busy === "resume" ? "Resuming…" : "Resume plan"}
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={openCancel}
+                            disabled={busy === "cancel"}
+                            className="block w-full text-xs text-red-700 underline-offset-2 hover:underline disabled:opacity-60"
+                          >
+                            {busy === "cancel" ? "Loading…" : "Cancel subscription"}
+                          </button>
+                        )}
                       </div>
                     ) : null}
                   </>
@@ -580,8 +597,9 @@ export default function PricingPage() {
       ) : null}
 
       <p className="text-center text-xs text-ink-mute">
-        Payments are processed securely by Stripe. You can cancel anytime — your refund is
-        your annual price minus your AI usage and the drills you’ve completed. Questions?{" "}
+        Payments are processed securely by Stripe. Plans are billed annually; you can cancel
+        anytime and keep access until your renewal date, but annual plans aren’t refundable.
+        Questions?{" "}
         <a href={SUPPORT_MAILTO} className="text-accent hover:underline">
           {SUPPORT_EMAIL}
         </a>

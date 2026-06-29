@@ -1,22 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth, clerkClient } from "@clerk/nextjs/server";
-import type Stripe from "stripe";
 import { CLERK_ENABLED } from "@/lib/clerk-config";
 import { getStripe, STRIPE_ENABLED } from "@/lib/stripe";
 import { readSubscription, setUserSubscription } from "@/lib/entitlements";
 import { tierById } from "@/lib/tiers";
-import { readSpentUsd } from "@/lib/limits";
-import { practicedCount } from "@/lib/practiced";
 
 export const runtime = "nodejs";
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
-
-// Cancellation with a usage-based refund:
-//   refund = price − AI spend − (drills completed / tier total) × price   (floored at 0)
-// POST with no body (or {confirm:false}) returns the breakdown as a preview;
-// POST {confirm:true} issues the Stripe refund, cancels the subscription, and
-// reverts the user to Free.
+// Cancellation policy: NO refund. The subscription is scheduled to cancel at the
+// end of the paid period — the user keeps full access until then, and it won't
+// renew (industry-standard for annual plans).
+//   POST {}              → preview { tierName, levelCount, accessUntil }
+//   POST {confirm:true}  → schedule cancellation at period end
+//   POST {resume:true}   → undo a scheduled cancellation
 export async function POST(req: NextRequest) {
   if (!CLERK_ENABLED) {
     return NextResponse.json({ error: "Sign-in is required." }, { status: 400 });
@@ -28,9 +24,9 @@ export async function POST(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Please sign in first." }, { status: 401 });
 
-  let confirm = false;
+  let body: { confirm?: boolean; resume?: boolean } = {};
   try {
-    confirm = !!((await req.json()) as { confirm?: boolean })?.confirm;
+    body = ((await req.json()) as typeof body) ?? {};
   } catch {
     /* no body → preview */
   }
@@ -40,86 +36,61 @@ export async function POST(req: NextRequest) {
   const sub = readSubscription(user.privateMetadata);
   if (!sub || sub.tier === "free" || !sub.stripeSubscriptionId) {
     return NextResponse.json(
-      { error: "You don't have an active paid subscription to cancel." },
+      { error: "You don't have an active paid subscription." },
       { status: 400 },
     );
   }
 
   const tier = tierById(sub.tier);
-  // Pricing is per level, so the annual price and the drill total both scale with
-  // how many levels the user bought.
   const levelCount = Math.max(1, sub.levels?.length ?? 1);
-  const price = round2(tier.priceUsd * levelCount);
-  const drillTotal = tier.drillTotal * levelCount;
-  const aiCostUsd = round2(readSpentUsd(user.privateMetadata));
-  // Server-authoritative practiced count (privateMetadata) — not the
-  // client-writable progress, which a user could clear to inflate their refund.
-  const drillsCompleted = practicedCount(user.privateMetadata);
-  const drillCharge = Math.min(
-    price,
-    drillTotal > 0 ? round2((drillsCompleted / drillTotal) * price) : 0,
-  );
-  const refund = Math.max(0, round2(price - aiCostUsd - drillCharge));
+  const stripe = getStripe();
 
-  const breakdown = {
-    tierName: tier.name,
-    levelCount,
-    price,
-    aiCostUsd,
-    drillsCompleted,
-    drillTotal,
-    drillCharge,
-    refund,
-  };
-
-  if (!confirm) {
-    return NextResponse.json({ preview: true, ...breakdown });
+  // Resolve the access-until date from Stripe (period end lives on the item).
+  let accessUntil = sub.expiresAt ?? 0;
+  try {
+    const live = await stripe.subscriptions.retrieve(sub.stripeSubscriptionId);
+    const periodEnd = live.items.data[0]?.current_period_end;
+    if (periodEnd) accessUntil = periodEnd * 1000;
+  } catch {
+    /* fall back to the stored expiresAt */
   }
 
-  // Issue the partial refund (if any), then cancel the subscription.
-  const stripe = getStripe();
-  try {
-    if (refund > 0) {
-      const subscription = await stripe.subscriptions.retrieve(sub.stripeSubscriptionId, {
-        expand: ["latest_invoice.payment_intent"],
+  // Resume: undo a scheduled cancellation.
+  if (body.resume) {
+    try {
+      await stripe.subscriptions.update(sub.stripeSubscriptionId, {
+        cancel_at_period_end: false,
       });
-      const inv = subscription.latest_invoice as Stripe.Invoice | null;
-      // payment_intent / charge availability varies by Stripe API version — read defensively.
-      const piRaw = (inv as unknown as { payment_intent?: unknown })?.payment_intent;
-      const chRaw = (inv as unknown as { charge?: unknown })?.charge;
-      const paymentIntent =
-        typeof piRaw === "string" ? piRaw : (piRaw as { id?: string } | undefined)?.id;
-      const charge =
-        typeof chRaw === "string" ? chRaw : (chRaw as { id?: string } | undefined)?.id;
-
-      if (paymentIntent || charge) {
-        await stripe.refunds.create({
-          amount: Math.round(refund * 100),
-          ...(paymentIntent ? { payment_intent: paymentIntent } : { charge }),
-        } as Stripe.RefundCreateParams);
-      } else {
-        console.error(
-          "[cancel] no payment_intent/charge found to refund for",
-          sub.stripeSubscriptionId,
-        );
-      }
+    } catch (err) {
+      console.error("[cancel] resume failed:", err);
+      return NextResponse.json(
+        { error: "Couldn't resume your plan. Please contact support." },
+        { status: 500 },
+      );
     }
-    await stripe.subscriptions.cancel(sub.stripeSubscriptionId);
+    await setUserSubscription(userId, { ...sub, cancelAtPeriodEnd: false });
+    return NextResponse.json({ resumed: true, tierName: tier.name });
+  }
+
+  // Preview (no charge, no change).
+  if (!body.confirm) {
+    return NextResponse.json({ preview: true, tierName: tier.name, levelCount, accessUntil });
+  }
+
+  // Schedule cancellation at period end — no refund, access continues until then.
+  try {
+    await stripe.subscriptions.update(sub.stripeSubscriptionId, {
+      cancel_at_period_end: true,
+    });
   } catch (err) {
-    console.error("[cancel] stripe error:", err);
+    console.error("[cancel] schedule failed:", err);
     return NextResponse.json(
-      { error: "Couldn't process the cancellation. Please contact support." },
+      { error: "Couldn't cancel. Please contact support." },
       { status: 500 },
     );
   }
+  // Keep access until period end; just record that it won't renew.
+  await setUserSubscription(userId, { ...sub, cancelAtPeriodEnd: true });
 
-  // Revert to Free now (the subscription.deleted webhook will also fire; idempotent).
-  await setUserSubscription(userId, {
-    tier: "free",
-    expiresAt: Date.now(),
-    stripeCustomerId: sub.stripeCustomerId,
-    stripeSubscriptionId: sub.stripeSubscriptionId,
-  });
-
-  return NextResponse.json({ canceled: true, ...breakdown });
+  return NextResponse.json({ canceled: true, tierName: tier.name, levelCount, accessUntil });
 }
