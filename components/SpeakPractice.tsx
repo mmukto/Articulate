@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import type { Drill, SpokenFeedback } from "@/lib/types";
 import { DELIVERY_MAP } from "@/lib/course";
 import { useProgress } from "@/lib/progress";
@@ -39,13 +45,21 @@ function fmt(s: number): string {
   return `${m}:${sec.toString().padStart(2, "0")}`;
 }
 
-export function SpeakPractice({
-  moduleSlug,
-  drill,
-}: {
-  moduleSlug: string;
-  drill: Drill;
-}) {
+/** Imperative handle for the drill's 🎙 Speak button (in DrillPractice), which
+ *  is the ONLY recording control: it records, stops, and re-records. */
+export interface SpeakPracticeHandle {
+  toggleRecording: () => void;
+}
+
+export const SpeakPractice = forwardRef<
+  SpeakPracticeHandle,
+  {
+    moduleSlug: string;
+    drill: Drill;
+    /** Fired when recording starts/stops so the Speak button can show state. */
+    onRecordingChange?: (recording: boolean) => void;
+  }
+>(function SpeakPractice({ moduleSlug, drill, onRecordingChange }, ref) {
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -60,17 +74,23 @@ export function SpeakPractice({
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  function setRecordingState(v: boolean) {
+    setRecording(v);
+    onRecordingChange?.(v);
+  }
+
   function cleanupStream() {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
   }
 
-  // Cleanup on unmount.
+  // Cleanup on unmount (also tells the Speak button recording has ended).
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       cleanupStream();
       if (audioUrl) URL.revokeObjectURL(audioUrl);
+      onRecordingChange?.(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -82,7 +102,7 @@ export function SpeakPractice({
     }
     const rec = recorderRef.current;
     if (rec && rec.state !== "inactive") rec.stop();
-    setRecording(false);
+    setRecordingState(false);
   }
 
   async function start() {
@@ -118,7 +138,7 @@ export function SpeakPractice({
       };
       recorderRef.current = rec;
       rec.start();
-      setRecording(true);
+      setRecordingState(true);
       setSeconds(0);
       setAudioBlob(null);
       timerRef.current = setInterval(() => {
@@ -137,6 +157,21 @@ export function SpeakPractice({
       cleanupStream();
     }
   }
+
+  // The 🎙 Speak button (in DrillPractice) drives the whole flow through this
+  // handle: tap to record, tap to stop, tap again for a new take.
+  useImperativeHandle(
+    ref,
+    () => ({
+      toggleRecording: () => {
+        if (loading) return;
+        if (recording) stop();
+        else void start();
+      },
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [recording, loading],
+  );
 
   async function submit() {
     if (!audioBlob || loading) return;
@@ -175,47 +210,21 @@ export function SpeakPractice({
 
   return (
     <div className="mt-4">
-      {/* Recorder controls */}
+      {/* Recorder status — the 🎙 Speak button above is the only control. */}
       <div className="flex flex-wrap items-center gap-3 rounded-lg bg-paper p-4">
-        {/* One button drives the whole recording flow: tap to record, tap to
-            stop, tap again to record a new take. */}
-        <button
-          onClick={() => (recording ? stop() : void start())}
-          disabled={loading}
-          aria-label={
-            recording
-              ? "Stop recording"
-              : audioBlob
-                ? "Record a new take"
-                : "Start recording"
-          }
-          className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-white shadow-sm transition-transform disabled:opacity-50 ${
-            recording ? "bg-ink" : "bg-accent hover:-translate-y-0.5"
-          }`}
-        >
-          {recording ? (
-            <>
-              <span className="h-2.5 w-2.5 animate-pulse rounded-sm bg-red-400" />
-              Stop
-            </>
-          ) : (
-            <>
-              <span className="h-2.5 w-2.5 rounded-full bg-white" />
-              {audioBlob ? "Record again" : "Record"}
-            </>
-          )}
-        </button>
-
         {recording ? (
           <span className="text-sm tabular-nums text-ink-soft">
             ● {fmt(seconds)} <span className="text-ink-mute">/ {fmt(MAX_SECONDS)}</span>
           </span>
-        ) : null}
-
-        {audioUrl && !recording ? (
+        ) : audioUrl ? (
           // eslint-disable-next-line jsx-a11y/media-has-caption
           <audio src={audioUrl} controls className="h-9 max-w-[200px]" />
-        ) : null}
+        ) : (
+          <span className="text-sm text-ink-mute">
+            Tap <span className="font-medium text-ink">🎙 Speak</span> above to start
+            recording.
+          </span>
+        )}
 
         {audioBlob && !recording ? (
           <button
@@ -229,8 +238,9 @@ export function SpeakPractice({
       </div>
 
       <p className="mt-2 text-xs text-ink-mute">
-        Speak your answer aloud (up to 90s). The coach transcribes it and scores your
-        delivery — pace, filler words, clarity, and enunciation.
+        The 🎙 Speak button records, stops, and re-records (up to 90s per take). The
+        coach transcribes your answer and scores your delivery — pace, filler words,
+        clarity, and enunciation.
       </p>
 
       {loading ? (
@@ -249,7 +259,7 @@ export function SpeakPractice({
       {feedback ? <SpokenFeedbackPanel feedback={feedback} /> : null}
     </div>
   );
-}
+});
 
 function SpokenFeedbackPanel({ feedback }: { feedback: SpokenFeedback }) {
   return (

@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { Drill, Feedback } from "@/lib/types";
 import { DIMENSION_MAP } from "@/lib/course";
 import { LEVEL_MAP } from "@/lib/levels";
 import { useProgress } from "@/lib/progress";
 import { ScoreBar } from "./ScoreBar";
 import { SpeakButton } from "./SpeakButton";
-import { SpeakPractice } from "./SpeakPractice";
+import { SpeakPractice, type SpeakPracticeHandle } from "./SpeakPractice";
 import { PracticedBadge } from "./PracticedBadge";
 
 type Mode = "write" | "speak";
@@ -28,6 +28,11 @@ export function DrillPractice({
   // Speak leads: spoken practice is the flagship mode, so it's first and the
   // default (highlighted). Writing is one tap away.
   const [mode, setMode] = useState<Mode>("speak");
+  // The 🎙 Speak button IS the recorder control: in speak mode, tapping it
+  // records → stops → records a new take (via the imperative handle below).
+  // SpeakPractice reports recording state back so the button can show it.
+  const speakRef = useRef<SpeakPracticeHandle>(null);
+  const [recording, setRecording] = useState(false);
 
   return (
     <div className="rounded-xl border border-ink/10 bg-white/60 p-6">
@@ -73,27 +78,64 @@ export function DrillPractice({
         </ul>
       </details>
 
-      {/* Mode toggle */}
+      {/* Mode toggle. The Speak button doubles as the one recording control. */}
       <div className="mt-4 inline-flex rounded-lg border border-ink/15 bg-paper p-0.5 text-sm">
-        {(["speak", "write"] as Mode[]).map((m) => (
-          <button
-            key={m}
-            onClick={() => setMode(m)}
-            className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
-              mode === m
-                ? "bg-accent text-white shadow-sm"
-                : "text-ink-soft hover:text-accent"
-            }`}
-          >
-            {m === "write" ? "✍️ Write" : "🎙 Speak"}
-          </button>
-        ))}
+        <button
+          onClick={() => {
+            if (mode !== "speak") {
+              setMode("speak"); // first tap opens speak practice; next tap records
+              return;
+            }
+            speakRef.current?.toggleRecording();
+          }}
+          aria-label={
+            mode !== "speak"
+              ? "Switch to spoken practice"
+              : recording
+                ? "Stop recording"
+                : "Start recording"
+          }
+          className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-colors ${
+            mode === "speak"
+              ? recording
+                ? "bg-ink text-white shadow-sm"
+                : "bg-accent text-white shadow-sm"
+              : "text-ink-soft hover:text-accent"
+          }`}
+        >
+          {mode === "speak" && recording ? (
+            <>
+              <span className="h-2 w-2 animate-pulse rounded-sm bg-red-400" />
+              Stop
+            </>
+          ) : (
+            "🎙 Speak"
+          )}
+        </button>
+        <button
+          onClick={() => {
+            setMode("write");
+            setRecording(false); // leaving speak mode ends any recording
+          }}
+          className={`rounded-md px-3 py-1.5 font-medium transition-colors ${
+            mode === "write"
+              ? "bg-accent text-white shadow-sm"
+              : "text-ink-soft hover:text-accent"
+          }`}
+        >
+          ✍️ Write
+        </button>
       </div>
 
       {mode === "write" ? (
         <WritePractice moduleSlug={moduleSlug} drill={drill} />
       ) : (
-        <SpeakPractice moduleSlug={moduleSlug} drill={drill} />
+        <SpeakPractice
+          ref={speakRef}
+          moduleSlug={moduleSlug}
+          drill={drill}
+          onRecordingChange={setRecording}
+        />
       )}
     </div>
   );
