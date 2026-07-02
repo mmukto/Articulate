@@ -3,10 +3,72 @@ import { SignedIn, SignedOut, SignUpButton } from "@/components/auth";
 import { MODULES, DIMENSIONS, ALL_DRILL_KEYS } from "@/lib/course";
 import { CourseProgress } from "@/components/CourseProgress";
 import { ModuleProgressBadge } from "@/components/ModuleProgressBadge";
+import { JsonLd } from "@/components/JsonLd";
+import { SITE_URL } from "@/lib/site";
+
+// Questions people actually type into search. Rendered visibly (below) and
+// mirrored into FAQPage structured data for rich-result eligibility.
+const HOME_FAQ = [
+  {
+    q: "What is iArticulate?",
+    a: "iArticulate is an articulation training course with an AI coach. You read short lessons on executive communication, respond to realistic drills, and get scored against a clarity rubric with a stronger rewrite of your own words.",
+  },
+  {
+    q: "Can you actually learn to be more articulate?",
+    a: "Yes. Being articulate is mostly about structure — leading with your point, grouping support, and cutting filler — not innate talent. Those are habits you build with practice and specific feedback, which is exactly what the drills provide.",
+  },
+  {
+    q: "How does the AI coaching work?",
+    a: "You write or speak an answer to a realistic scenario. The AI scores it on six dimensions — clarity, concision, structure, precision, audience, and impact — points out specific fixes, and rewrites your answer stronger. You revise and re-score as many times as you like.",
+  },
+  {
+    q: "Is there a free version?",
+    a: "Yes. A free account unlocks the first three modules with one AI-coached drill each, at your chosen career level. Paid plans unlock more drills across all ten modules.",
+  },
+];
 
 export default function HomePage() {
+  const organizationLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "iArticulate",
+    url: `${SITE_URL}/`,
+    description:
+      "An articulation training course with AI coaching for executive communication and clarity.",
+  };
+
+  const courseLd = {
+    "@context": "https://schema.org",
+    "@type": "Course",
+    name: "iArticulate — Executive Communication & Clarity",
+    description:
+      "A ten-module course that trains clear, articulate communication with short lessons and AI-coached drills scored against a clarity rubric.",
+    url: `${SITE_URL}/`,
+    provider: { "@type": "Organization", name: "iArticulate", url: `${SITE_URL}/` },
+    hasCourseInstance: MODULES.map((m) => ({
+      "@type": "CourseInstance",
+      name: `${m.number}. ${m.title}`,
+      description: m.tagline,
+      courseMode: "online",
+      url: `${SITE_URL}/modules/${m.slug}`,
+    })),
+  };
+
+  const faqLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: HOME_FAQ.map((f) => ({
+      "@type": "Question",
+      name: f.q,
+      acceptedAnswer: { "@type": "Answer", text: f.a },
+    })),
+  };
+
   return (
     <div className="space-y-16">
+      <JsonLd data={organizationLd} />
+      <JsonLd data={courseLd} />
+      <JsonLd data={faqLd} />
       {/* Hero */}
       <section className="pt-6">
         <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
@@ -199,6 +261,54 @@ export default function HomePage() {
           concise and executive communication, and cognitive-science research on the
           primacy effect, working-memory chunking, and the curse of knowledge.
         </p>
+      </section>
+
+      {/* Guides teaser */}
+      <section>
+        <h2 className="font-serif text-2xl font-semibold tracking-tight">
+          Start with a free guide
+        </h2>
+        <p className="mt-2 max-w-2xl text-ink-soft">
+          Prefer to read first? Our guides cover the core principles — no account needed.
+        </p>
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          {[
+            { slug: "how-to-be-more-articulate", t: "How to be more articulate" },
+            { slug: "bluf-bottom-line-up-front", t: "The BLUF method" },
+            { slug: "cut-filler-words", t: "Cut filler words" },
+          ].map((g) => (
+            <Link
+              key={g.slug}
+              href={`/guides/${g.slug}`}
+              className="group rounded-lg border border-ink/10 bg-white/40 p-4 transition-colors hover:border-accent/50 hover:bg-accent-wash/40"
+            >
+              <span className="font-serif font-semibold group-hover:text-accent">
+                {g.t}
+              </span>
+              <span className="mt-1 block text-sm text-ink-mute">Read the guide →</span>
+            </Link>
+          ))}
+        </div>
+        <p className="mt-4 text-sm">
+          <Link href="/guides" className="font-medium text-accent hover:underline">
+            Browse all guides
+          </Link>
+        </p>
+      </section>
+
+      {/* FAQ */}
+      <section>
+        <h2 className="font-serif text-2xl font-semibold tracking-tight">
+          Common questions
+        </h2>
+        <div className="mt-6 space-y-4">
+          {HOME_FAQ.map((f) => (
+            <div key={f.q} className="rounded-lg border border-ink/10 bg-white/50 p-5">
+              <h3 className="font-medium">{f.q}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{f.a}</p>
+            </div>
+          ))}
+        </div>
       </section>
     </div>
   );

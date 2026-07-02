@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { MODULES } from "@/lib/course";
+import { GUIDES } from "@/lib/guides";
 import { SITE_URL } from "@/lib/site";
 
 // Sitemap served at /sitemap.xml. Lists the publicly indexable routes so Google
@@ -9,6 +10,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const routes: MetadataRoute.Sitemap = [
     { url: `${SITE_URL}/`, changeFrequency: "weekly", priority: 1 },
     { url: `${SITE_URL}/pricing`, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${SITE_URL}/guides`, changeFrequency: "weekly", priority: 0.7 },
+    ...GUIDES.map((g) => ({
+      url: `${SITE_URL}/guides/${g.slug}`,
+      lastModified: g.dateModified,
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    })),
     ...MODULES.map((m) => ({
       url: `${SITE_URL}/modules/${m.slug}`,
       changeFrequency: "monthly" as const,

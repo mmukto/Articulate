@@ -94,6 +94,12 @@ export default function RootLayout({
                   Modules
                 </Link>
                 <Link
+                  href="/guides"
+                  className="text-sm text-ink-mute transition-colors hover:text-accent"
+                >
+                  Guides
+                </Link>
+                <Link
                   href="/pricing"
                   className="text-sm text-ink-mute transition-colors hover:text-accent"
                 >
