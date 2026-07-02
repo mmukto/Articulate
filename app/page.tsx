@@ -6,6 +6,7 @@ import { ModuleProgressBadge } from "@/components/ModuleProgressBadge";
 import { JsonLd } from "@/components/JsonLd";
 import { SITE_URL } from "@/lib/site";
 import { rampBadge, rampBar, rampCard, rampText } from "@/lib/palette";
+import { SpeakButton } from "@/components/SpeakButton";
 
 // Questions people actually type into search. Rendered visibly (below) and
 // mirrored into FAQPage structured data for rich-result eligibility.
@@ -217,6 +218,88 @@ export default function HomePage() {
               <p className="mt-1 text-sm leading-relaxed text-ink-mute">{s.b}</p>
             </div>
           ))}
+        </div>
+
+        {/* A real drill from Module 1, worked end-to-end, so visitors see the
+            coaching before they sign up. */}
+        <div className="mt-8 rounded-xl border border-ink/10 bg-white/60 p-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-serif text-xl font-semibold tracking-tight">
+              A real drill: the buried status update
+            </h3>
+            <span className="ml-auto flex gap-1.5">
+              {["Structure", "Clarity"].map((f) => (
+                <span
+                  key={f}
+                  className="rounded-full bg-accent-wash px-2.5 py-0.5 text-xs font-medium text-accent"
+                >
+                  {f}
+                </span>
+              ))}
+            </span>
+          </div>
+
+          <div className="mt-3 rounded-lg bg-paper p-4 text-sm leading-relaxed text-ink-soft">
+            <span className="font-semibold text-ink">Scenario. </span>
+            Your manager asks how the data migration is going. It&apos;s behind
+            schedule — a vendor delivered a corrupted export — but your recovery plan
+            gets you back on track within a week.
+          </div>
+          <p className="mt-3 text-sm font-medium">
+            🎙 Speak your update aloud — or ✍️ write it. Two to four sentences, bottom
+            line first.
+          </p>
+
+          <div className="mt-4 grid gap-5 sm:grid-cols-2">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-ink-mute">
+                A first attempt · scored{" "}
+                <span className="font-serif text-sm font-bold text-amber-600">58</span>
+              </div>
+              <blockquote className="mt-1.5 rounded-lg border border-ink/10 bg-white p-4 text-sm leading-relaxed text-ink-mute">
+                &ldquo;So basically the vendor sent us a corrupted export file, which we
+                didn&apos;t catch right away, and the team has been working through it
+                all week. We think we should be able to get things back on track fairly
+                soon.&rdquo;
+              </blockquote>
+              <p className="mt-2 text-xs leading-relaxed text-ink-mute">
+                The coach&apos;s verdict: the bottom line — a week behind, recovery in
+                hand — is buried under the vendor story. Lead with it, and replace
+                &ldquo;fairly soon&rdquo; with a date.
+              </p>
+            </div>
+            <div>
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-semibold uppercase tracking-wide text-accent">
+                  The coached version · scored{" "}
+                  <span className="font-serif text-sm font-bold text-emerald-700">92</span>
+                </div>
+                <SpeakButton
+                  text="We're one week behind on the migration — a vendor delivered a corrupted export. Our recovery plan has us back on track by Friday. Nothing needed from you; I'll flag it immediately if Friday slips."
+                  label="Hear it"
+                />
+              </div>
+              <blockquote className="mt-1.5 rounded-lg border-l-2 border-accent bg-paper p-4 font-serif text-[15px] leading-relaxed text-ink">
+                &ldquo;We&apos;re one week behind on the migration — a vendor delivered
+                a corrupted export. Our recovery plan has us back on track by Friday.
+                Nothing needed from you; I&apos;ll flag it immediately if Friday
+                slips.&rdquo;
+              </blockquote>
+              <p className="mt-2 text-xs leading-relaxed text-ink-mute">
+                Status first, cause in one clause, a date instead of &ldquo;soon,&rdquo;
+                and a clear no-action close.
+              </p>
+            </div>
+          </div>
+
+          <p className="mt-4 text-sm">
+            <Link
+              href={`/modules/${MODULES[0].slug}`}
+              className="font-medium text-accent hover:underline"
+            >
+              Practice this drill in Module 1 →
+            </Link>
+          </p>
         </div>
       </section>
 
