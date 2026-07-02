@@ -1,8 +1,23 @@
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { CLERK_ENABLED } from "./clerk-config";
-import { FREE_TIER, TIER_MAP, tierById, type Tier, type TierId } from "./tiers";
+import {
+  drillsPerModule,
+  FREE_DRILLS_PER_MODULE,
+  FREE_MODULE_LIMIT,
+  FREE_TIER,
+  TIER_MAP,
+  tierById,
+  type Tier,
+  type TierId,
+} from "./tiers";
 import { DEFAULT_LEVEL, LEVEL_IDS, parseLevels, readLevel, type Level } from "./levels";
-import { DEFAULT_PROFESSION, readProfession, type Profession } from "./professions";
+import {
+  DEFAULT_PROFESSION,
+  levelInfoFor,
+  readProfession,
+  type Profession,
+} from "./professions";
+import type { Module } from "./types";
 
 // Server-authoritative subscription entitlements. The user's plan lives in Clerk
 // `privateMetadata.subscription` (server-only, never trusted from the client)
@@ -204,6 +219,42 @@ export async function getCurrentLevel(): Promise<Level> {
   const { userId } = await auth();
   if (!userId) return DEFAULT_LEVEL;
   return getUserLevel(userId);
+}
+
+/**
+ * The single server-side drill entitlement gate, shared by the feedback and
+ * speak routes (never trust the client — the module page UI mirrors this, but
+ * this is what's enforced). Pricing is per level: a purchased level unlocks
+ * the tier's full per-module count; otherwise the Free sampler applies — the
+ * first drill per module in the first FREE_MODULE_LIMIT modules, at the
+ * user's chosen (locked) level. Professions are a free preference, so the
+ * same per-level rule applies within whichever profession the drill belongs
+ * to (levelIndex is the drill's position in its level+profession group).
+ */
+export function drillAccess(
+  ent: Entitlements,
+  found: { module: Module; level: Level; profession: Profession; levelIndex: number },
+): { allowed: true } | { allowed: false; error: string } {
+  if (ent.comp) return { allowed: true }; // comp/owner accounts see everything
+
+  const purchased = ent.levels.includes(found.level);
+  const freeOk =
+    found.module.number <= FREE_MODULE_LIMIT && found.level === ent.level;
+  const allowed = purchased
+    ? drillsPerModule(ent.tier)
+    : freeOk
+      ? FREE_DRILLS_PER_MODULE
+      : 0;
+  if (found.levelIndex < allowed) return { allowed: true };
+
+  const error = purchased
+    ? "This drill is part of a higher plan. Upgrade to unlock it."
+    : found.module.number > FREE_MODULE_LIMIT
+      ? `Free practice covers the first ${FREE_MODULE_LIMIT} modules. Subscribe to unlock the full course.`
+      : found.level !== ent.level
+        ? "Free practice is locked to your chosen level. Subscribe to unlock other levels."
+        : `Subscribe to unlock all drills at the ${levelInfoFor(found.profession, found.level).name} level.`;
+  return { allowed: false, error };
 }
 
 /**

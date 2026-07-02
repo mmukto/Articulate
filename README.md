@@ -239,11 +239,12 @@ Course content is plain data. To add a module, append a `Module` object to `MODU
 `lib/course.ts`. To add a drill, append a `Drill` to the right bank — for the general
 business library, `lib/drills-extra.ts` (senior), `lib/drills-early.ts`, or
 `lib/drills-mid.ts`; for a profession, the matching `lib/drills-<profession>-<level>.ts` —
-keyed by module slug. Order within an array is the tier unlock order, so **append**
-(don't reorder or rename ids — the practiced-drill bitset indexes by position; new
-profession banks likewise get **appended** to `PROFESSION_BANKS` in `course.ts`, never
-reordered). The rubric, prompt, gating, and feedback UI all adapt automatically. Guides
-are the same idea in `lib/guides.ts`.
+keyed by module slug. Order within an array is the tier unlock order, and the
+practiced-drill bitset indexes by position (see `ALL_DRILL_KEYS` in `lib/course.ts`),
+so: never reorder or rename ids; new profession banks get **appended at the end of
+`PROFESSION_BANKS`**; and to add drills to an *existing* profession, append a NEW
+supplemental bank rather than growing a bank in place. The rubric, prompt, gating, and
+feedback UI all adapt automatically. Guides are the same idea in `lib/guides.ts`.
 
 ## Notes
 

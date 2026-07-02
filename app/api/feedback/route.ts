@@ -4,10 +4,8 @@ import { getDrill } from "@/lib/course";
 import { gradeResponse } from "@/lib/feedback";
 import { CLERK_ENABLED } from "@/lib/clerk-config";
 import { checkAccess, recordSpend, estimateCostUsd, type AccessGate } from "@/lib/limits";
-import { getUserEntitlements } from "@/lib/entitlements";
-import { drillsPerModule, FREE_DRILLS_PER_MODULE, FREE_MODULE_LIMIT } from "@/lib/tiers";
+import { drillAccess, getUserEntitlements } from "@/lib/entitlements";
 import type { Level } from "@/lib/levels";
-import { levelInfoFor } from "@/lib/professions";
 
 // Feedback grading can take a few seconds with adaptive thinking — give it room.
 export const maxDuration = 60;
@@ -70,37 +68,14 @@ export async function POST(req: NextRequest) {
   // Coaching is calibrated to the drill's own career level and profession.
   const level: Level = found.level;
 
-  // Server-authoritative gate (never trust the client): pricing is per level —
-  // a level the user has paid for unlocks their full tier count; any other level
-  // exposes only the Free sampler. Professions aren't priced: the same per-level
-  // rule applies within whichever profession the drill belongs to (levelIndex is
-  // the drill's position within its level+profession group).
+  // Server-authoritative entitlement gate (never trust the client) — the
+  // shared policy lives in lib/entitlements.ts drillAccess().
   let gate: AccessGate | null = null;
   if (userId) {
     const ent = await getUserEntitlements(userId);
-    // Comp/owner accounts have full access to every drill at every level.
-    if (!ent.comp) {
-      const purchased = ent.levels.includes(found.level);
-      // Paid levels: the tier's full count, all modules. Free sign-up: the
-      // 1-drill sampler, only in the first FREE_MODULE_LIMIT modules and only at
-      // the user's chosen (locked) level.
-      const freeOk =
-        found.module.number <= FREE_MODULE_LIMIT && found.level === ent.level;
-      const allowed = purchased
-        ? drillsPerModule(ent.tier)
-        : freeOk
-          ? FREE_DRILLS_PER_MODULE
-          : 0;
-      if (found.levelIndex >= allowed) {
-        const error = purchased
-          ? "This drill is part of a higher plan. Upgrade to unlock it."
-          : found.module.number > FREE_MODULE_LIMIT
-            ? `Free practice covers the first ${FREE_MODULE_LIMIT} modules. Subscribe to unlock the full course.`
-            : found.level !== ent.level
-              ? "Free practice is locked to your chosen level. Subscribe to unlock other levels."
-              : `Subscribe to unlock all drills at the ${levelInfoFor(found.profession, found.level).name} level.`;
-        return NextResponse.json({ error }, { status: 403 });
-      }
+    const access = drillAccess(ent, found);
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: 403 });
     }
     // Enforce the per-user annual AI allowance before spending money.
     gate = await checkAccess(userId);

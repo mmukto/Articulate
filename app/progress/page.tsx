@@ -3,7 +3,7 @@ import { SignedIn, SignedOut, SignInButton, SignUpButton } from "@/components/au
 import { ProgressDashboard, type ProgressModule } from "@/components/ProgressDashboard";
 import { CurrentLevel } from "@/components/CurrentLevel";
 import { ProfessionPicker } from "@/components/ProfessionPicker";
-import { MODULES } from "@/lib/course";
+import { MODULES, drillsForProfession } from "@/lib/course";
 import { getCurrentEntitlements } from "@/lib/entitlements";
 
 export const metadata = {
@@ -23,9 +23,10 @@ export default async function ProgressPage() {
     slug: m.slug,
     number: m.number,
     title: m.title,
-    drills: m.drills
-      .filter((d) => (d.profession ?? "business") === ent.profession)
-      .map((d) => ({ id: d.id, title: d.title })),
+    drills: drillsForProfession(m, ent.profession).map((d) => ({
+      id: d.id,
+      title: d.title,
+    })),
   }));
 
   return (

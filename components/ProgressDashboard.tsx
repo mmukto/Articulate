@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useProgress, drillKey, type DrillStat } from "@/lib/progress";
+import { scoreTextColor } from "./ScoreBar";
 
 // Compact course shape passed from the server (app/progress/page.tsx), already
 // filtered to the user's profession. Passing data as props — instead of
@@ -12,12 +13,6 @@ export interface ProgressModule {
   number: number;
   title: string;
   drills: { id: string; title: string }[];
-}
-
-function scoreColor(score: number): string {
-  if (score >= 80) return "text-emerald-700";
-  if (score >= 60) return "text-amber-600";
-  return "text-danger";
 }
 
 function StatCard({ value, label }: { value: string; label: string }) {
@@ -42,6 +37,9 @@ export function ProgressDashboard({ modules }: { modules: ProgressModule[] }) {
   const practicedKeys = allKeys.filter((k) => k in data);
   const total = allKeys.length;
   const done = practicedKeys.length;
+  // Practice recorded under other professions — surfaced so switching
+  // professions never reads as a wiped history.
+  const otherProfessionDone = Object.keys(data).length - done;
   const avgBest = done
     ? Math.round(
         practicedKeys.reduce((sum, k) => sum + (data[k]?.best ?? 0), 0) / done,
@@ -54,9 +52,17 @@ export function ProgressDashboard({ modules }: { modules: ProgressModule[] }) {
   if (done === 0) {
     return (
       <div className="rounded-xl border border-ink/10 bg-white/60 p-8 text-center">
-        <p className="font-serif text-lg">You haven&apos;t practiced any drills yet.</p>
+        <p className="font-serif text-lg">
+          {otherProfessionDone > 0
+            ? "No drills practiced in this profession yet."
+            : "You haven't practiced any drills yet."}
+        </p>
         <p className="mt-1 text-sm text-ink-mute">
-          Your scores and completed drills will show up here as you go.
+          {otherProfessionDone > 0
+            ? `Your ${otherProfessionDone} practiced drill${
+                otherProfessionDone === 1 ? "" : "s"
+              } (and their scores) are under other professions — switch profession above to see them.`
+            : "Your scores and completed drills will show up here as you go."}
         </p>
         <Link
           href={`/modules/${modules[0]?.slug ?? ""}`}
@@ -114,7 +120,7 @@ export function ProgressDashboard({ modules }: { modules: ProgressModule[] }) {
                           {stat.attempts}×
                         </span>
                         <span
-                          className={`font-serif font-semibold tabular-nums ${scoreColor(
+                          className={`font-serif font-semibold tabular-nums ${scoreTextColor(
                             stat.best,
                           )}`}
                           title={`best ${stat.best}, last ${stat.last}`}
@@ -135,8 +141,13 @@ export function ProgressDashboard({ modules }: { modules: ProgressModule[] }) {
 
       <p className="text-xs text-ink-mute">
         Scores are your <strong>best</strong> per drill (written = overall; spoken =
-        average delivery), shown for your current profession. Synced to your account,
-        so they follow you across devices.
+        average delivery), shown for your current profession
+        {otherProfessionDone > 0
+          ? ` (${otherProfessionDone} more practiced drill${
+              otherProfessionDone === 1 ? "" : "s"
+            } under other professions)`
+          : ""}
+        . Synced to your account, so they follow you across devices.
       </p>
     </div>
   );

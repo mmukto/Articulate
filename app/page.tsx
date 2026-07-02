@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { SignedIn, SignedOut, SignUpButton } from "@/components/auth";
-import { MODULES, DIMENSIONS } from "@/lib/course";
+import { MODULES, DIMENSIONS, drillsForProfession } from "@/lib/course";
 import { getCurrentEntitlements } from "@/lib/entitlements";
 import { CourseProgress } from "@/components/CourseProgress";
 import { ModuleProgressBadge } from "@/components/ModuleProgressBadge";
@@ -37,9 +37,7 @@ export default async function HomePage() {
   const ent = await getCurrentEntitlements();
   const professionModules = MODULES.map((m) => ({
     module: m,
-    drillIds: m.drills
-      .filter((d) => (d.profession ?? "business") === ent.profession)
-      .map((d) => d.id),
+    drillIds: drillsForProfession(m, ent.profession).map((d) => d.id),
   }));
   const professionDrillKeys = professionModules.flatMap(({ module: m, drillIds }) =>
     drillIds.map((id) => `${m.slug}/${id}`),

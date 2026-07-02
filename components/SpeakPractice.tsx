@@ -10,7 +10,7 @@ import {
 import type { Drill, SpokenFeedback } from "@/lib/types";
 import { DELIVERY_MAP } from "@/lib/rubric";
 import { useProgress } from "@/lib/progress";
-import { ScoreBar } from "./ScoreBar";
+import { ScoreBar, scoreTextColor } from "./ScoreBar";
 import { SpeakButton } from "./SpeakButton";
 import { ConfettiBurst, CELEBRATION_SCORE } from "./Confetti";
 
@@ -23,12 +23,6 @@ function overallOf(fb: SpokenFeedback): number {
   return scores.length
     ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
     : 0;
-}
-
-function overallColor(score: number): string {
-  if (score >= 80) return "text-emerald-700";
-  if (score >= 60) return "text-amber-600";
-  return "text-danger";
 }
 
 function pickMimeType(): string {
@@ -286,7 +280,7 @@ function SpokenFeedbackPanel({ feedback }: { feedback: SpokenFeedback }) {
       <div className="flex items-start gap-5">
         <div className="text-center">
           <div
-            className={`font-serif text-4xl font-bold tabular-nums ${overallColor(overall)}`}
+            className={`font-serif text-4xl font-bold tabular-nums ${scoreTextColor(overall)}`}
           >
             {overall}
           </div>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SignedIn, SignedOut, SignInButton, SignUpButton } from "@/components/auth";
-import { MODULES, MODULE_MAP } from "@/lib/course";
+import { MODULES, MODULE_MAP, drillsForProfession } from "@/lib/course";
 import { ModuleDrills } from "@/components/ModuleDrills";
 import { getCurrentEntitlements } from "@/lib/entitlements";
 import { drillsPerModule, FREE_DRILLS_PER_MODULE, FREE_MODULE_LIMIT } from "@/lib/tiers";
@@ -51,9 +51,7 @@ export default async function ModulePage({ params }: { params: { slug: string } 
   // drills). Switching professions refreshes this page (ProfessionPicker).
   const professionModule = {
     ...module,
-    drills: module.drills.filter(
-      (d) => (d.profession ?? "business") === ent.profession,
-    ),
+    drills: drillsForProfession(module, ent.profession),
   };
 
   return (

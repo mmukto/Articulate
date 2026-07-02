@@ -2,11 +2,7 @@
 
 import { useState } from "react";
 import { LEVELS, readLevel, hasChosenLevel, type Level } from "@/lib/levels";
-import {
-  DEFAULT_PROFESSION,
-  levelInfoFor,
-  type Profession,
-} from "@/lib/professions";
+import { levelInfoFor, type Profession } from "@/lib/professions";
 import { useMaybeUser } from "@/components/auth";
 import { LevelHelp } from "@/components/LevelHelp";
 
@@ -20,15 +16,17 @@ export function LevelPicker({
   onChange,
   heading,
   locked = false,
-  profession = DEFAULT_PROFESSION,
+  profession,
 }: {
   value?: Level;
   onChange?: (level: Level) => void;
   heading?: string;
   /** When true, the level can't be changed (free plans are locked to one level). */
   locked?: boolean;
-  /** Names the levels for this profession (display only; ids are unchanged). */
-  profession?: Profession;
+  /** Names the levels for this profession (display only; ids are unchanged).
+   *  Required so a new render site can't silently show generic career-level
+   *  names to Student-profession users. */
+  profession: Profession;
 }) {
   const { user } = useMaybeUser();
   const [internal, setInternal] = useState<Level | null>(null);

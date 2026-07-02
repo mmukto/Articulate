@@ -788,10 +788,11 @@ const RAW_MODULES: Module[] = [
   },
 ];
 
-// Profession-specific banks, appended AFTER the original (business) banks in a
-// FIXED order. Order matters: the practiced-drill bitset (lib/practiced.ts)
-// indexes drills by position, so only ever APPEND new banks — never reorder or
-// remove entries from this list.
+// Profession-specific banks in a FIXED order. Order matters: the practiced
+// bitset enumeration (ALL_DRILL_KEYS below) walks these banks in list order,
+// so only ever APPEND to this list — never reorder, remove, or grow an
+// existing bank in place (to extend a profession, append a NEW supplemental
+// bank at the end).
 const PROFESSION_BANKS: Record<string, Drill[]>[] = [
   ENGINEER_EARLY_DRILLS,
   ENGINEER_MID_DRILLS,
@@ -850,12 +851,29 @@ export const MODULE_MAP: Record<string, Module> = MODULES.reduce(
 );
 
 // Canonical enumeration of every drill as "<moduleSlug>/<drillId>", and a stable
-// index per key. Used both for the home-page progress ring and for the
-// server-side practiced-drill bitset (lib/practiced.ts). Indices are stable as
-// long as drill ids aren't changed; appending new drills only grows the list.
-export const ALL_DRILL_KEYS: string[] = MODULES.flatMap((m) =>
-  m.drills.map((d) => `${m.slug}/${d.id}`),
-);
+// index per key, used for the server-side practiced-drill bitset
+// (lib/practiced.ts). ORDER IS LOAD-BEARING: users' practiced bits are stored
+// by position in Clerk metadata, so an existing key's index must never change.
+//
+// The enumeration is REGION-ordered, not module-ordered:
+//   1. All original business-library drills, module by module — byte-identical
+//      to the pre-professions enumeration, so bits written before professions
+//      shipped still point at the same drills.
+//   2. Each profession bank in PROFESSION_BANKS order, module by module.
+// A new profession bank appended to PROFESSION_BANKS adds keys at the global
+// tail only. To add drills to an EXISTING profession later, append a NEW
+// supplemental bank at the end of PROFESSION_BANKS (never grow an existing
+// bank in place — that would shift every region after it).
+export const ALL_DRILL_KEYS: string[] = [
+  ...MODULES.flatMap((m) =>
+    m.drills
+      .filter((d) => d.profession === "business")
+      .map((d) => `${m.slug}/${d.id}`),
+  ),
+  ...PROFESSION_BANKS.flatMap((bank) =>
+    MODULES.flatMap((m) => (bank[m.slug] ?? []).map((d) => `${m.slug}/${d.id}`)),
+  ),
+];
 export const DRILL_INDEX: Map<string, number> = new Map(
   ALL_DRILL_KEYS.map((k, i) => [k, i]),
 );
@@ -880,9 +898,10 @@ export function getDrill(moduleSlug: string, drillId: string) {
   return { module, drill, level, profession, levelIndex };
 }
 
-/** Drills in a module for a given profession, in unlock order (all levels). */
-export function drillsForProfession(moduleSlug: string, profession: Profession) {
-  const module = MODULE_MAP[moduleSlug];
-  if (!module) return [];
-  return module.drills.filter((d) => (d.profession ?? "business") === profession);
+/** Drills in a module for a given profession, in unlock order (all levels).
+ *  The single source of the profession-filter rule — pages must use this
+ *  instead of re-implementing the predicate. (MODULES normalizes `profession`
+ *  onto every drill, so no fallback is needed here.) */
+export function drillsForProfession(module: Module, profession: Profession): Drill[] {
+  return module.drills.filter((d) => d.profession === profession);
 }

@@ -2,20 +2,13 @@
 
 import { useState } from "react";
 import { LEVELS } from "@/lib/levels";
-import {
-  DEFAULT_PROFESSION,
-  levelInfoFor,
-  type Profession,
-} from "@/lib/professions";
+import { levelInfoFor, type Profession } from "@/lib/professions";
 
 // A small "Which level am I?" disclosure that explains the three levels, to help
 // a user pick. Reused under the level switcher on modules and the progress page.
-// Level names/blurbs adapt to the profession (Student → school stages).
-export function LevelHelp({
-  profession = DEFAULT_PROFESSION,
-}: {
-  profession?: Profession;
-}) {
+// Level names/blurbs adapt to the profession (Student → school stages); the
+// prop is required so no render site can silently fall back to generic names.
+export function LevelHelp({ profession }: { profession: Profession }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="mt-2">

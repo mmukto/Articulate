@@ -139,15 +139,17 @@ export const PROFESSION_MAP: Record<Profession, ProfessionInfo> =
     {} as Record<Profession, ProfessionInfo>,
   );
 
-/** All profession ids in canonical (display) order. */
-export const PROFESSION_IDS: Profession[] = PROFESSIONS.map((p) => p.id);
-
 // The original drill library is general-workplace content, so it doubles as the
 // default profession for existing users who never picked one.
 export const DEFAULT_PROFESSION: Profession = "business";
 
+// Own-property check: the ids come from client-writable unsafeMetadata, and a
+// plain `in` would accept prototype keys like "constructor" as professions.
+const isProfession = (id: string): id is Profession =>
+  Object.prototype.hasOwnProperty.call(PROFESSION_MAP, id);
+
 export function professionById(id: string | null | undefined): Profession {
-  return id && id in PROFESSION_MAP ? (id as Profession) : DEFAULT_PROFESSION;
+  return id && isProfession(id) ? id : DEFAULT_PROFESSION;
 }
 
 /** Read the user's chosen profession from Clerk unsafeMetadata (default = business). */
@@ -159,7 +161,7 @@ export function readProfession(unsafeMetadata: unknown): Profession {
 /** Whether the user has explicitly chosen a profession (vs. the default). */
 export function hasChosenProfession(unsafeMetadata: unknown): boolean {
   const p = (unsafeMetadata as { profession?: string } | undefined)?.profession;
-  return !!p && p in PROFESSION_MAP;
+  return !!p && isProfession(p);
 }
 
 /**
@@ -172,11 +174,7 @@ export function levelInfoFor(
   profession: Profession,
   level: Level,
 ): ProfessionLevelInfo {
-  return (
-    PROFESSION_MAP[profession].levelInfo?.[level] ?? {
-      name: LEVEL_MAP[level].name,
-      blurb: LEVEL_MAP[level].blurb,
-      coachNote: LEVEL_MAP[level].coachNote,
-    }
-  );
+  // LevelInfo is a structural superset of ProfessionLevelInfo, so the generic
+  // career-level entry works as the fallback directly.
+  return PROFESSION_MAP[profession].levelInfo?.[level] ?? LEVEL_MAP[level];
 }

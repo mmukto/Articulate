@@ -3,21 +3,15 @@
 import { useRef, useState } from "react";
 import type { Drill, Feedback } from "@/lib/types";
 import { DIMENSION_MAP } from "@/lib/rubric";
-import { LEVEL_MAP } from "@/lib/levels";
+import { levelInfoFor } from "@/lib/professions";
 import { useProgress } from "@/lib/progress";
-import { ScoreBar } from "./ScoreBar";
+import { ScoreBar, scoreTextColor } from "./ScoreBar";
 import { SpeakButton } from "./SpeakButton";
 import { SpeakPractice, type SpeakPracticeHandle } from "./SpeakPractice";
 import { PracticedBadge } from "./PracticedBadge";
 import { ConfettiBurst, CELEBRATION_SCORE } from "./Confetti";
 
 type Mode = "write" | "speak";
-
-function overallColor(score: number): string {
-  if (score >= 80) return "text-emerald-700";
-  if (score >= 60) return "text-amber-600";
-  return "text-danger";
-}
 
 export function DrillPractice({
   moduleSlug,
@@ -42,11 +36,12 @@ export function DrillPractice({
           {drill.title}
         </h3>
         <span
-          title="This scenario is matched to your career level"
+          title="This scenario is matched to your level"
           className="inline-flex items-center gap-1 rounded-full border border-ink/15 px-2 py-0.5 text-[11px] font-medium text-ink-mute"
         >
           <span aria-hidden>◐</span>
-          {LEVEL_MAP[drill.level ?? "senior"].name}
+          {/* Named for the drill's own profession (Student → school stages). */}
+          {levelInfoFor(drill.profession ?? "business", drill.level ?? "senior").name}
         </span>
         <PracticedBadge moduleSlug={moduleSlug} drillId={drill.id} />
         <div className="ml-auto flex flex-wrap gap-1.5">
@@ -247,7 +242,7 @@ function FeedbackPanel({ feedback }: { feedback: Feedback }) {
       <div className="flex items-start gap-5">
         <div className="text-center">
           <div
-            className={`font-serif text-4xl font-bold tabular-nums ${overallColor(
+            className={`font-serif text-4xl font-bold tabular-nums ${scoreTextColor(
               feedback.overall,
             )}`}
           >

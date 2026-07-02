@@ -70,8 +70,13 @@ export function parseLevels(input: unknown): Level[] {
 // `d.level ?? "senior"` in lib/course.ts), which is a separate concern.
 export const DEFAULT_LEVEL: Level = "early";
 
+// Own-property check: ids come from client-writable unsafeMetadata, and a
+// plain `in` would accept prototype keys like "constructor" as levels.
+const isLevel = (id: string): id is Level =>
+  Object.prototype.hasOwnProperty.call(LEVEL_MAP, id);
+
 export function levelById(id: string | null | undefined): Level {
-  return id && id in LEVEL_MAP ? (id as Level) : DEFAULT_LEVEL;
+  return id && isLevel(id) ? id : DEFAULT_LEVEL;
 }
 
 /** Read the user's chosen level from Clerk unsafeMetadata (default = DEFAULT_LEVEL). */
@@ -83,5 +88,5 @@ export function readLevel(unsafeMetadata: unknown): Level {
 /** Whether the user has explicitly chosen a level (vs. falling back to default). */
 export function hasChosenLevel(unsafeMetadata: unknown): boolean {
   const l = (unsafeMetadata as { level?: string } | undefined)?.level;
-  return !!l && l in LEVEL_MAP;
+  return !!l && isLevel(l);
 }

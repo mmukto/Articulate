@@ -2,12 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  PROFESSIONS,
-  PROFESSION_MAP,
-  readProfession,
-  type Profession,
-} from "@/lib/professions";
+import { PROFESSIONS, PROFESSION_MAP, type Profession } from "@/lib/professions";
 import { useMaybeUser } from "@/components/auth";
 
 // Profession switcher. Unlike career levels, professions are a free preference:
@@ -28,6 +23,14 @@ export function ProfessionPicker({
   const router = useRouter();
   const [current, setCurrent] = useState<Profession>(value);
   const [saving, setSaving] = useState(false);
+  // Re-sync with the server-resolved value when it changes (router.refresh
+  // after a save, or a change made on another page) so the highlighted button
+  // never disagrees with the server-filtered drill list below.
+  const [prevValue, setPrevValue] = useState<Profession>(value);
+  if (value !== prevValue) {
+    setPrevValue(value);
+    if (!saving) setCurrent(value);
+  }
 
   async function pick(next: Profession) {
     if (next === current || saving) return;
@@ -41,8 +44,8 @@ export function ProfessionPicker({
       // Re-render the server component tree so the drill list re-filters.
       router.refresh();
     } catch {
-      // Offline / rate-limited — revert to what the server still has.
-      setCurrent(readProfession(user.unsafeMetadata));
+      // Offline / rate-limited — revert to what the server last rendered.
+      setCurrent(value);
     } finally {
       setSaving(false);
     }

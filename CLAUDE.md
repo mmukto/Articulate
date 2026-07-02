@@ -46,9 +46,15 @@ in `lib/site.ts` (`SITE_URL`, default `https://iarticulate.ca`).
   served it and `lib/limits.ts` meters spend at that model's per-token price (unknown
   models are metered at the highest listed price, failing safe).
 - **Subscription tiers** (`lib/tiers.ts`): Starter / Plus / Pro / Max unlock
-  30 / 60 / 120 / 250 **total** drills *per purchased career level* (spread evenly =
-  3/6/12/25 per module, via `drillsPerModule`). Free is a sampler: 1 drill per module in
-  the **first 3 modules only** (`FREE_MODULE_LIMIT`), locked to the user's chosen level.
+  30 / 60 / 120 / 250 **total** drills *per purchased career level, per profession*
+  (spread evenly = 3/6/12/25 per module, via `drillsPerModule`; professions are a free
+  preference, so a subscriber can practice their tier's count in every profession's
+  bank). Free is a sampler: 1 drill per module in the **first 3 modules only**
+  (`FREE_MODULE_LIMIT`), locked to the user's chosen level — but per profession, so a
+  free user who switches professions can sample up to 9 drills per module there. The
+  hard cost ceiling is always the per-user AI allowance (`lib/limits.ts`), not the
+  drill counts. The single gate implementation is `drillAccess` in
+  `lib/entitlements.ts`, shared by the feedback and speak routes.
   **Pricing is per career level** (`lib/levels.ts`: early / mid / senior): the tier price
   is billed once per level bought (Stripe quantity = level count), and only purchased
   levels unlock the tier's drill count — other levels fall back to the Free sampler.
@@ -62,9 +68,13 @@ in `lib/site.ts` (`SITE_URL`, default `https://iarticulate.ca`).
 - **Professions** (`lib/professions.ts`): drills are also written per profession —
   business (default; the original general library), engineer, doctor, lawyer, finance,
   sales, consultant, operator, student — 25 drills per module per level per profession, in
-  `lib/drills-<profession>-<level>.ts` banks merged in `course.ts`. **Append-only**: the
-  practiced bitset (`lib/practiced.ts`) indexes drills by position, so never reorder or
-  remove banks/drills — only append. The profession is a FREE preference in Clerk
+  `lib/drills-<profession>-<level>.ts` banks merged in `course.ts`. **Bitset order is
+  load-bearing**: the practiced bitset (`lib/practiced.ts`) indexes drills by position
+  in `ALL_DRILL_KEYS`, which enumerates REGION-first (all original business drills in
+  their pre-professions order, then each profession bank in `PROFESSION_BANKS` order).
+  Never reorder/remove anything; new profession banks append at the END of
+  `PROFESSION_BANKS`; to add drills to an existing profession, append a NEW
+  supplemental bank — never grow an existing bank in place. The profession is a FREE preference in Clerk
   `unsafeMetadata` (switch anytime; never priced); the per-level pricing gate applies
   within each profession (`getDrill().levelIndex` is the drill's position within its
   level+profession group). Module, progress, and home pages filter drills by profession
@@ -75,8 +85,10 @@ in `lib/site.ts` (`SITE_URL`, default `https://iarticulate.ca`).
   `levelInfoFor()` — the Student profession renames early/mid/senior to High school /
   Undergraduate / Postgraduate (level IDs and per-level pricing are untouched). Sign-up
   on `/pricing` is profession-first: a dropdown (step 1) before the level chooser
-  (step 2); `stashPrefs` in `components/CheckoutResume.tsx` carries the chosen
-  profession+level through Clerk sign-up for both free and paid paths.
+  (step 2). The chosen profession+level survive Clerk sign-up via sessionStorage: the
+  paid path carries them INSIDE the `stashCheckout` payload (applied by
+  `CheckoutResume` BEFORE the Stripe redirect, so navigation can't cancel the write);
+  the free path uses `stashPrefs`/`LevelResume` (`components/CheckoutResume.tsx`).
 - **Comp accounts** (`lib/entitlements.ts`): emails/usernames in `COMP_USER_EMAILS`
   (server-only env, comma-separated) resolve to **Max tier with the AI cap bypassed** —
   full access, no subscription. Checked in `tierForUser`/`isCompUser`; kept in env so the

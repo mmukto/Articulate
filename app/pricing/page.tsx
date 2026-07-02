@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { SignInButton, SignUpButton, useMaybeUser } from "@/components/auth";
 import { stashCheckout, stashPrefs } from "@/components/CheckoutResume";
 import { TIERS, drillsPerModule, tierById, FREE_MODULE_LIMIT, type TierId } from "@/lib/tiers";
 import { LEVELS, DEFAULT_LEVEL, readLevel, type Level } from "@/lib/levels";
 import {
   PROFESSIONS,
+  PROFESSION_MAP,
   DEFAULT_PROFESSION,
   professionById,
   levelInfoFor,
@@ -33,6 +35,9 @@ export default function PricingPage() {
   // Picked FIRST (before levels): names the levels (Student → High school /
   // Undergraduate / Postgraduate) and is saved to the account at sign-up.
   const [profession, setProfession] = useState<Profession>(DEFAULT_PROFESSION);
+  // Once the user touches the dropdown, background /api/usage loads (e.g. the
+  // post-checkout poll) must not clobber their fresh pick with a stale value.
+  const professionTouched = useRef(false);
   const [signedIn, setSignedIn] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +76,7 @@ export default function PricingPage() {
         if (cancelled || !d?.enabled) return null;
         setSignedIn(true);
         setCurrentTier(d.tierId as TierId);
-        setProfession(professionById(d.currentProfession));
+        if (!professionTouched.current) setProfession(professionById(d.currentProfession));
         setCancelAtPeriodEnd(d.cancelAtPeriodEnd === true);
         setAccessUntil(typeof d.accessUntil === "number" ? d.accessUntil : null);
         const owned = (Array.isArray(d.levels) ? d.levels : []) as Level[];
@@ -150,12 +155,17 @@ export default function PricingPage() {
   const onPaidPlan = signedIn && !!currentTier && currentTier !== "free";
 
   // Profession is a free preference: signed-in users save it immediately;
-  // signed-out visitors carry it through sign-up via stashPrefs below.
+  // signed-out visitors carry it through sign-up via the stashes below. The
+  // refresh clears the router cache so server-filtered pages (modules, home,
+  // progress) reflect the new profession on the next navigation.
+  const router = useRouter();
   function changeProfession(next: Profession) {
+    professionTouched.current = true;
     setProfession(next);
     if (user) {
       user
         .update({ unsafeMetadata: { ...(user.unsafeMetadata ?? {}), profession: next } })
+        .then(() => router.refresh())
         .catch(() => {});
     }
   }
@@ -369,7 +379,7 @@ export default function PricingPage() {
           ))}
         </select>
         <p className="mt-1.5 text-xs text-ink-mute">
-          {PROFESSIONS.find((p) => p.id === profession)?.blurb}
+          {PROFESSION_MAP[profession].blurb}
         </p>
 
         <div className="mt-5 flex flex-wrap items-baseline justify-between gap-2 border-t border-ink/10 pt-4">
@@ -588,10 +598,12 @@ export default function PricingPage() {
                   ) : (
                     <SignUpButton mode="modal" forceRedirectUrl="/pricing">
                       <button
-                        onClick={() => {
-                          stashCheckout(tier.id, selectedLevels);
-                          stashPrefs({ profession });
-                        }}
+                        onClick={() =>
+                          stashCheckout(tier.id, selectedLevels, {
+                            profession,
+                            level: selectedLevels[selectedLevels.length - 1] ?? DEFAULT_LEVEL,
+                          })
+                        }
                         disabled={levelCount === 0}
                         className="w-full rounded-md bg-accent px-4 py-2 text-sm font-medium text-white shadow-sm transition-transform hover:-translate-y-0.5 disabled:opacity-60"
                       >
