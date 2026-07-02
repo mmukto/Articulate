@@ -5,6 +5,7 @@ import { MODULES, MODULE_MAP } from "@/lib/course";
 import { ModuleDrills } from "@/components/ModuleDrills";
 import { getCurrentEntitlements } from "@/lib/entitlements";
 import { drillsPerModule, FREE_DRILLS_PER_MODULE, FREE_MODULE_LIMIT } from "@/lib/tiers";
+import { rampCard, rampText } from "@/lib/palette";
 
 export function generateStaticParams() {
   return MODULES.map((m) => ({ slug: m.slug }));
@@ -56,7 +57,11 @@ export default async function ModulePage({ params }: { params: { slug: string } 
           ← All modules
         </Link>
         <div className="mt-4 flex items-baseline gap-3">
-          <span className="font-serif text-sm font-semibold text-accent">
+          {/* Carries the module's hue from the color-coded home list. */}
+          <span
+            className="font-serif text-sm font-semibold"
+            style={rampText(module.number - 1)}
+          >
             Module {module.number}
           </span>
         </div>
@@ -65,7 +70,7 @@ export default async function ModulePage({ params }: { params: { slug: string } 
         </h1>
         <p className="mt-2 text-lg italic text-ink-soft">{module.tagline}</p>
 
-        <div className="mt-5 rounded-lg border border-ink/10 bg-white/50 p-5">
+        <div className="mt-5 rounded-lg border p-5" style={rampCard(module.number - 1)}>
           <div className="text-xs font-semibold uppercase tracking-wide text-ink-mute">
             By the end you can
           </div>

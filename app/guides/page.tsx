@@ -3,6 +3,7 @@ import Link from "next/link";
 import { GUIDES } from "@/lib/guides";
 import { SITE_URL } from "@/lib/site";
 import { JsonLd } from "@/components/JsonLd";
+import { rampBar, rampCard, rampText } from "@/lib/palette";
 
 export const metadata: Metadata = {
   title: "Guides — Clearer Communication",
@@ -16,10 +17,6 @@ export const metadata: Metadata = {
     url: "/guides",
   },
 };
-
-// Smooth hue ramp (brand violet → teal) color-coding the guide cards, matching
-// the module list on the home page.
-const rampHue = (i: number) => 245 - i * 36;
 
 export default function GuidesIndexPage() {
   // ItemList structured data helps search engines understand this as a hub of
@@ -58,8 +55,8 @@ export default function GuidesIndexPage() {
           <li key={g.slug}>
             <Link
               href={`/guides/${g.slug}`}
-              className="group block rounded-lg border border-ink/10 border-l-4 bg-white/40 p-6 transition-colors hover:bg-accent-wash/40"
-              style={{ borderLeftColor: `hsl(${rampHue(i)} 50% 62%)` }}
+              className="group block rounded-lg border border-l-4 p-6 transition-all hover:-translate-y-0.5 hover:shadow-sm"
+              style={{ ...rampCard(i, 36), ...rampBar(i, 36) }}
             >
               <h2 className="font-serif text-xl font-semibold tracking-tight group-hover:text-accent">
                 {g.title}
@@ -67,7 +64,7 @@ export default function GuidesIndexPage() {
               <p className="mt-2 leading-relaxed text-ink-soft">{g.dek}</p>
               <span
                 className="mt-3 inline-block text-xs font-medium uppercase tracking-wide"
-                style={{ color: `hsl(${rampHue(i)} 45% 45%)` }}
+                style={rampText(i, 36)}
               >
                 {g.readMinutes} min read
               </span>

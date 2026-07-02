@@ -5,21 +5,10 @@ import { CourseProgress } from "@/components/CourseProgress";
 import { ModuleProgressBadge } from "@/components/ModuleProgressBadge";
 import { JsonLd } from "@/components/JsonLd";
 import { SITE_URL } from "@/lib/site";
+import { rampBadge, rampBar, rampCard, rampText } from "@/lib/palette";
 
 // Questions people actually type into search. Rendered visibly (below) and
 // mirrored into FAQPage structured data for rich-result eligibility.
-// Smooth hue ramp (brand violet → teal) used to color-code the module and
-// guide cards. Constant saturation/lightness across the ramp keeps the ten
-// colors reading as one calm palette rather than a rainbow.
-const rampHue = (i: number, step = 12) => 245 - i * step;
-const rampBadge = (i: number, step = 12) => ({
-  backgroundColor: `hsl(${rampHue(i, step)} 60% 93%)`,
-  color: `hsl(${rampHue(i, step)} 48% 42%)`,
-});
-const rampBar = (i: number, step = 12) => ({
-  borderLeftColor: `hsl(${rampHue(i, step)} 50% 62%)`,
-});
-
 const HOME_FAQ = [
   {
     q: "What is iArticulate?",
@@ -92,13 +81,15 @@ export default function HomePage() {
           <span className="italic text-accent">clearly</span>, the first time.
         </h1>
         <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink-soft">
-          <span className="font-medium text-ink">
-            Become more articulate — in meetings and in writing.
-          </span>{" "}
-          Speak your answer to a realistic workplace scenario, or write it. Your AI
-          communication coach scores it against an executive-level rubric, shows you
-          exactly what to fix, and reads the stronger version aloud — so you hear how
-          it should sound before it matters.
+          <span className="block font-medium text-ink">
+            Speak like an executive — before it counts.
+          </span>
+          <span className="mt-2 block">
+            Sound sharper in every meeting and email. Respond to realistic scenarios,
+            get scored against an executive-level rubric, see precisely what to fix —
+            then hear the polished version read aloud. Rehearse the moment before
+            it&apos;s real.
+          </span>
         </p>
         <div className="mt-7 flex flex-wrap items-center gap-3">
           <Link
@@ -170,8 +161,8 @@ export default function HomePage() {
             <li key={m.slug}>
               <Link
                 href={`/modules/${m.slug}`}
-                className="group flex items-start gap-4 rounded-lg border border-ink/10 border-l-4 bg-white/40 p-5 transition-colors hover:bg-accent-wash/40"
-                style={rampBar(i)}
+                className="group flex items-start gap-4 rounded-lg border border-l-4 p-5 transition-all hover:-translate-y-0.5 hover:shadow-sm"
+                style={{ ...rampCard(i), ...rampBar(i) }}
               >
                 <span
                   className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full font-serif text-lg font-semibold"
@@ -300,16 +291,13 @@ export default function HomePage() {
             <Link
               key={g.slug}
               href={`/guides/${g.slug}`}
-              className="group rounded-lg border border-ink/10 border-l-4 bg-white/40 p-4 transition-colors hover:bg-accent-wash/40"
-              style={rampBar(i, 36)}
+              className="group rounded-lg border border-l-4 p-4 transition-all hover:-translate-y-0.5 hover:shadow-sm"
+              style={{ ...rampCard(i, 36), ...rampBar(i, 36) }}
             >
               <span className="font-serif font-semibold group-hover:text-accent">
                 {g.t}
               </span>
-              <span
-                className="mt-1 block text-sm font-medium"
-                style={{ color: `hsl(${rampHue(i, 36)} 45% 45%)` }}
-              >
+              <span className="mt-1 block text-sm font-medium" style={rampText(i, 36)}>
                 Read the guide →
               </span>
             </Link>
