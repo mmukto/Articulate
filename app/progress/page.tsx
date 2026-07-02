@@ -4,8 +4,11 @@ import { ProgressDashboard } from "@/components/ProgressDashboard";
 import { CurrentLevel } from "@/components/CurrentLevel";
 
 export const metadata = {
-  title: "My progress · iArticulate",
+  title: "My progress",
   description: "Your practiced drills and scores.",
+  // Per-user dashboard — no value to search engines and nothing to index behind
+  // auth. Explicitly keep it out of the index (overrides the layout default).
+  robots: { index: false, follow: false },
 };
 
 export default function ProgressPage() {

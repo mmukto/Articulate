@@ -4,14 +4,48 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@/components/auth";
 import { CLERK_ENABLED } from "@/lib/clerk-config";
 import { CheckoutResume, LevelResume } from "@/components/CheckoutResume";
-import { SUPPORT_MAILTO } from "@/lib/site";
+import { SUPPORT_MAILTO, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
+const TITLE = "iArticulate — Executive Communication & Clarity";
+const DESCRIPTION =
+  "An articulation training course with AI coaching. Practice executive communication and get specific, rubric-based feedback on clarity, concision, structure, precision, and presence.";
+
 export const metadata: Metadata = {
-  title: "iArticulate — Executive Communication & Clarity",
-  description:
-    "An articulation training course with AI coaching. Practice executive communication and get specific, rubric-based feedback on clarity, concision, structure, precision, and presence.",
+  // metadataBase makes all relative Open Graph / canonical URLs resolve to
+  // absolute https://iarticulate.ca links (required for valid social previews
+  // and canonical tags). Child pages inherit this.
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: TITLE,
+    // Child pages that set their own `title` string get "iArticulate" appended
+    // automatically, so per-page titles stay branded without repeating it.
+    template: "%s · iArticulate",
+  },
+  description: DESCRIPTION,
+  applicationName: "iArticulate",
   manifest: "/manifest.webmanifest",
+  alternates: { canonical: "/" },
+  // Default: let search engines index and follow. Per-page metadata can override
+  // (e.g. the user-specific /progress page sets robots.index = false).
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+  },
+  openGraph: {
+    type: "website",
+    siteName: "iArticulate",
+    title: TITLE,
+    description: DESCRIPTION,
+    url: "/",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
   // Makes an iPad "Add to Home Screen" install launch full-screen as a
   // standalone app rather than inside Safari.
   appleWebApp: {

@@ -12,10 +12,18 @@ export function generateStaticParams() {
 
 export function generateMetadata({ params }: { params: { slug: string } }) {
   const module = MODULE_MAP[params.slug];
-  if (!module) return { title: "Module not found · iArticulate" };
+  // The root layout's title template appends "· iArticulate", so titles here are
+  // the bare page name. Each module gets a canonical URL for clean indexing.
+  if (!module) return { title: "Module not found" };
   return {
-    title: `${module.number}. ${module.title} · iArticulate`,
+    title: `${module.number}. ${module.title}`,
     description: module.tagline,
+    alternates: { canonical: `/modules/${module.slug}` },
+    openGraph: {
+      title: `${module.number}. ${module.title} · iArticulate`,
+      description: module.tagline,
+      url: `/modules/${module.slug}`,
+    },
   };
 }
 
