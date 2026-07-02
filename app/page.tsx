@@ -8,6 +8,18 @@ import { SITE_URL } from "@/lib/site";
 
 // Questions people actually type into search. Rendered visibly (below) and
 // mirrored into FAQPage structured data for rich-result eligibility.
+// Smooth hue ramp (brand violet → teal) used to color-code the module and
+// guide cards. Constant saturation/lightness across the ramp keeps the ten
+// colors reading as one calm palette rather than a rainbow.
+const rampHue = (i: number, step = 12) => 245 - i * step;
+const rampBadge = (i: number, step = 12) => ({
+  backgroundColor: `hsl(${rampHue(i, step)} 60% 93%)`,
+  color: `hsl(${rampHue(i, step)} 48% 42%)`,
+});
+const rampBar = (i: number, step = 12) => ({
+  borderLeftColor: `hsl(${rampHue(i, step)} 50% 62%)`,
+});
+
 const HOME_FAQ = [
   {
     q: "What is iArticulate?",
@@ -80,14 +92,13 @@ export default function HomePage() {
           <span className="italic text-accent">clearly</span>, the first time.
         </h1>
         <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink-soft">
-          Short lessons, then realistic drills you{" "}
-          <span className="font-medium text-ink">speak aloud</span> — or write. An AI
-          coach scores every answer against a sharp rubric, rewrites it stronger, and
-          reads the stronger version aloud so you can hear how it should sound. Train{" "}
           <span className="font-medium text-ink">
-            both your spoken and written articulation
+            Become more articulate — in meetings and in writing.
           </span>{" "}
-          in one place.
+          Speak your answer to a realistic workplace scenario, or write it. Your AI
+          communication coach scores it against an executive-level rubric, shows you
+          exactly what to fix, and reads the stronger version aloud — so you hear how
+          it should sound before it matters.
         </p>
         <div className="mt-7 flex flex-wrap items-center gap-3">
           <Link
@@ -132,7 +143,7 @@ export default function HomePage() {
       {/* Modules */}
       <section id="modules" className="scroll-mt-20">
         <h2 className="font-serif text-2xl font-semibold tracking-tight">
-          The curriculum
+          Modules
         </h2>
         <p className="mt-2 max-w-2xl text-ink-soft">
           Ten modules. Each pairs a short lesson and before/after examples with a deep
@@ -155,13 +166,17 @@ export default function HomePage() {
           </p>
         </SignedOut>
         <ol className="mt-6 space-y-3">
-          {MODULES.map((m) => (
+          {MODULES.map((m, i) => (
             <li key={m.slug}>
               <Link
                 href={`/modules/${m.slug}`}
-                className="group flex items-start gap-4 rounded-lg border border-ink/10 bg-white/40 p-5 transition-colors hover:border-accent/50 hover:bg-accent-wash/40"
+                className="group flex items-start gap-4 rounded-lg border border-ink/10 border-l-4 bg-white/40 p-5 transition-colors hover:bg-accent-wash/40"
+                style={rampBar(i)}
               >
-                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-wash font-serif text-lg font-semibold text-accent">
+                <span
+                  className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full font-serif text-lg font-semibold"
+                  style={rampBadge(i)}
+                >
                   {m.number}
                 </span>
                 <span className="min-w-0">
@@ -281,16 +296,22 @@ export default function HomePage() {
             { slug: "how-to-be-more-articulate", t: "How to be more articulate" },
             { slug: "bluf-bottom-line-up-front", t: "The BLUF method" },
             { slug: "cut-filler-words", t: "Cut filler words" },
-          ].map((g) => (
+          ].map((g, i) => (
             <Link
               key={g.slug}
               href={`/guides/${g.slug}`}
-              className="group rounded-lg border border-ink/10 bg-white/40 p-4 transition-colors hover:border-accent/50 hover:bg-accent-wash/40"
+              className="group rounded-lg border border-ink/10 border-l-4 bg-white/40 p-4 transition-colors hover:bg-accent-wash/40"
+              style={rampBar(i, 36)}
             >
               <span className="font-serif font-semibold group-hover:text-accent">
                 {g.t}
               </span>
-              <span className="mt-1 block text-sm text-ink-mute">Read the guide →</span>
+              <span
+                className="mt-1 block text-sm font-medium"
+                style={{ color: `hsl(${rampHue(i, 36)} 45% 45%)` }}
+              >
+                Read the guide →
+              </span>
             </Link>
           ))}
         </div>

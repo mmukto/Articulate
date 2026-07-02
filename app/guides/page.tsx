@@ -17,6 +17,10 @@ export const metadata: Metadata = {
   },
 };
 
+// Smooth hue ramp (brand violet → teal) color-coding the guide cards, matching
+// the module list on the home page.
+const rampHue = (i: number) => 245 - i * 36;
+
 export default function GuidesIndexPage() {
   // ItemList structured data helps search engines understand this as a hub of
   // related articles.
@@ -50,17 +54,21 @@ export default function GuidesIndexPage() {
       </header>
 
       <ul className="space-y-4">
-        {GUIDES.map((g) => (
+        {GUIDES.map((g, i) => (
           <li key={g.slug}>
             <Link
               href={`/guides/${g.slug}`}
-              className="group block rounded-lg border border-ink/10 bg-white/40 p-6 transition-colors hover:border-accent/50 hover:bg-accent-wash/40"
+              className="group block rounded-lg border border-ink/10 border-l-4 bg-white/40 p-6 transition-colors hover:bg-accent-wash/40"
+              style={{ borderLeftColor: `hsl(${rampHue(i)} 50% 62%)` }}
             >
               <h2 className="font-serif text-xl font-semibold tracking-tight group-hover:text-accent">
                 {g.title}
               </h2>
               <p className="mt-2 leading-relaxed text-ink-soft">{g.dek}</p>
-              <span className="mt-3 inline-block text-xs uppercase tracking-wide text-ink-mute">
+              <span
+                className="mt-3 inline-block text-xs font-medium uppercase tracking-wide"
+                style={{ color: `hsl(${rampHue(i)} 45% 45%)` }}
+              >
                 {g.readMinutes} min read
               </span>
             </Link>
