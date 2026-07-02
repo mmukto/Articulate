@@ -77,9 +77,9 @@ export default function HomePage() {
           Articulation training · AI-coached
         </p>
         <h1 className="font-serif text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
-          Say the important thing,
+          Say what matters.
           <br />
-          <span className="italic text-accent">clearly</span>, the first time.
+          <span className="italic text-accent">Clearly.</span> The first time.
         </h1>
         <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink-soft">
           <span className="block font-medium text-ink">
@@ -111,7 +111,7 @@ export default function HomePage() {
       {/* Rubric */}
       <section>
         <h2 className="font-serif text-2xl font-semibold tracking-tight">
-          You'll be graded on six things
+          You will be graded on six rubrics
         </h2>
         <p className="mt-2 max-w-2xl text-ink-soft">
           Every answer is scored on each dimension, with specific notes — the rubric a
