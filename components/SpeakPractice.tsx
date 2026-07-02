@@ -177,24 +177,34 @@ export function SpeakPractice({
     <div className="mt-4">
       {/* Recorder controls */}
       <div className="flex flex-wrap items-center gap-3 rounded-lg bg-paper p-4">
-        {!recording ? (
-          <button
-            onClick={start}
-            disabled={loading}
-            className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white shadow-sm transition-transform hover:-translate-y-0.5 disabled:opacity-50"
-          >
-            <span className="h-2.5 w-2.5 rounded-full bg-white" />
-            {audioBlob ? "Re-record" : "Record"}
-          </button>
-        ) : (
-          <button
-            onClick={stop}
-            className="inline-flex items-center gap-2 rounded-md bg-ink px-4 py-2 text-sm font-medium text-white shadow-sm"
-          >
-            <span className="h-2.5 w-2.5 animate-pulse rounded-sm bg-red-400" />
-            Stop
-          </button>
-        )}
+        {/* One button drives the whole recording flow: tap to record, tap to
+            stop, tap again to record a new take. */}
+        <button
+          onClick={() => (recording ? stop() : void start())}
+          disabled={loading}
+          aria-label={
+            recording
+              ? "Stop recording"
+              : audioBlob
+                ? "Record a new take"
+                : "Start recording"
+          }
+          className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-white shadow-sm transition-transform disabled:opacity-50 ${
+            recording ? "bg-ink" : "bg-accent hover:-translate-y-0.5"
+          }`}
+        >
+          {recording ? (
+            <>
+              <span className="h-2.5 w-2.5 animate-pulse rounded-sm bg-red-400" />
+              Stop
+            </>
+          ) : (
+            <>
+              <span className="h-2.5 w-2.5 rounded-full bg-white" />
+              {audioBlob ? "Record again" : "Record"}
+            </>
+          )}
+        </button>
 
         {recording ? (
           <span className="text-sm tabular-nums text-ink-soft">
