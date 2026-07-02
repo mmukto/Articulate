@@ -98,7 +98,11 @@ export function CheckoutResume() {
           const res = await fetch("/api/billing/checkout", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ tier: pending.tier, levels: pending.levels ?? [] }),
+            body: JSON.stringify({
+              tier: pending.tier,
+              levels: pending.levels ?? [],
+              profession: pending.profession,
+            }),
           });
           const data = await res.json().catch(() => ({}));
           if (res.ok && data?.url) {

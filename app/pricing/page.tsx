@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { SignInButton, SignUpButton, useMaybeUser } from "@/components/auth";
 import { stashCheckout, stashPrefs } from "@/components/CheckoutResume";
 import { TIERS, drillsPerModule, tierById, FREE_MODULE_LIMIT, type TierId } from "@/lib/tiers";
@@ -31,9 +30,13 @@ const sameLevels = (a: Level[], b: Level[]) =>
 export default function PricingPage() {
   const [currentTier, setCurrentTier] = useState<TierId | null>(null);
   const [ownedLevels, setOwnedLevels] = useState<Level[]>([]);
+  const [ownedProfessions, setOwnedProfessions] = useState<Profession[]>([]);
   const [selectedLevels, setSelectedLevels] = useState<Level[]>([DEFAULT_LEVEL]);
-  // Picked FIRST (before levels): names the levels (Student → High school /
-  // Undergraduate / Postgraduate) and is saved to the account at sign-up.
+  // Picked FIRST (before levels): the profession the plan will COVER. It names
+  // the levels (Student → High school / Undergraduate / Postgraduate) and is
+  // recorded on the subscription at checkout (professions are paid, like
+  // levels). It intentionally does NOT write the practice preference — the
+  // practice profession follows the plan.
   const [profession, setProfession] = useState<Profession>(DEFAULT_PROFESSION);
   // Once the user touches the dropdown, background /api/usage loads (e.g. the
   // post-checkout poll) must not clobber their fresh pick with a stale value.
@@ -76,7 +79,14 @@ export default function PricingPage() {
         if (cancelled || !d?.enabled) return null;
         setSignedIn(true);
         setCurrentTier(d.tierId as TierId);
-        if (!professionTouched.current) setProfession(professionById(d.currentProfession));
+        const ownedProf = (Array.isArray(d.professions) ? d.professions : []) as Profession[];
+        setOwnedProfessions(ownedProf);
+        // Preselect the profession their plan covers, else their preference.
+        if (!professionTouched.current) {
+          setProfession(
+            ownedProf.length > 0 ? ownedProf[0] : professionById(d.currentProfession),
+          );
+        }
         setCancelAtPeriodEnd(d.cancelAtPeriodEnd === true);
         setAccessUntil(typeof d.accessUntil === "number" ? d.accessUntil : null);
         const owned = (Array.isArray(d.levels) ? d.levels : []) as Level[];
@@ -154,21 +164,17 @@ export default function PricingPage() {
   const levelCount = selectedLevels.length;
   const onPaidPlan = signedIn && !!currentTier && currentTier !== "free";
 
-  // Profession is a free preference: signed-in users save it immediately;
-  // signed-out visitors carry it through sign-up via the stashes below. The
-  // refresh clears the router cache so server-filtered pages (modules, home,
-  // progress) reflect the new profession on the next navigation.
-  const router = useRouter();
+  // Selecting a profession here only changes what a purchase would cover — it
+  // never rewrites the account's practice profession (that follows the plan,
+  // and free accounts lock to their first choice).
   function changeProfession(next: Profession) {
     professionTouched.current = true;
     setProfession(next);
-    if (user) {
-      user
-        .update({ unsafeMetadata: { ...(user.unsafeMetadata ?? {}), profession: next } })
-        .then(() => router.refresh())
-        .catch(() => {});
-    }
   }
+  // A subscriber selecting a profession outside their plan can't upgrade in
+  // place — profession swaps require cancel + re-subscribe.
+  const professionSwap =
+    onPaidPlan && ownedProfessions.length > 0 && !ownedProfessions.includes(profession);
 
   // New subscriptions go straight to Stripe Checkout (which shows the card form,
   // so there's no surprise charge). In-place upgrades charge the saved card
@@ -191,7 +197,7 @@ export default function PricingPage() {
       fetch("/api/billing/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tier: tierId, levels }),
+        body: JSON.stringify({ tier: tierId, levels, profession }),
       })
         .then((r) => r.json())
         .then((d) =>
@@ -232,7 +238,7 @@ export default function PricingPage() {
     setError(null);
     setBusy(tier);
     try {
-      await post("/api/billing/checkout", { tier, levels });
+      await post("/api/billing/checkout", { tier, levels, profession });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't start checkout.");
       setBusy(null);
@@ -309,8 +315,12 @@ export default function PricingPage() {
         </h1>
         <p className="mx-auto mt-2 max-w-xl text-ink-soft">
           All plans include every lesson and the AI coach. Higher plans unlock more drills
-          per module. <span className="font-medium text-ink">Pricing is per career level</span> —
-          the price below is for one level, so all three levels cost 3×. Billed annually.
+          per module.{" "}
+          <span className="font-medium text-ink">
+            Pricing is per career level, per profession
+          </span>{" "}
+          — the price below covers one level in your chosen profession, so all three
+          levels cost 3×. Billed annually.
         </p>
       </header>
 
@@ -342,14 +352,25 @@ export default function PricingPage() {
             </h2>
             <span className="font-serif text-lg font-semibold text-ink">
               $
-              {(tierById(currentTier).priceUsd * Math.max(1, ownedLevels.length)).toFixed(2)}
+              {(
+                tierById(currentTier).priceUsd *
+                Math.max(1, ownedLevels.length) *
+                Math.max(1, ownedProfessions.length)
+              ).toFixed(2)}
               <span className="text-sm font-normal text-ink-mute"> /year</span>
             </span>
           </div>
           <p className="mt-1 text-sm text-ink-soft">
+            {ownedProfessions.length > 0
+              ? `Profession: ${ownedProfessions
+                  .map((p) => PROFESSION_MAP[p].name)
+                  .join(", ")} · `
+              : ""}
             {ownedLevels.length > 0
               ? `Level${ownedLevels.length === 1 ? "" : "s"}: ` +
-                ownedLevels.map((l) => levelInfoFor(profession, l).name).join(", ")
+                ownedLevels
+                  .map((l) => levelInfoFor(ownedProfessions[0] ?? profession, l).name)
+                  .join(", ")
               : "—"}
           </p>
         </section>
@@ -363,8 +384,8 @@ export default function PricingPage() {
           1. What&apos;s your profession?
         </h2>
         <p className="mt-1 text-sm text-ink-soft">
-          Drills and AI coaching are written for your profession. It&apos;s a free setting —
-          switch anytime.
+          Drills and AI coaching are written for your profession — your plan covers the
+          profession you pick here.
         </p>
         <select
           value={profession}
@@ -381,6 +402,15 @@ export default function PricingPage() {
         <p className="mt-1.5 text-xs text-ink-mute">
           {PROFESSION_MAP[profession].blurb}
         </p>
+        {professionSwap ? (
+          <p className="mt-1.5 text-xs text-amber-700">
+            Your plan covers{" "}
+            <span className="font-medium">
+              {ownedProfessions.map((p) => PROFESSION_MAP[p].name).join(", ")}
+            </span>
+            . Switching professions requires canceling and re-subscribing.
+          </p>
+        ) : null}
 
         <div className="mt-5 flex flex-wrap items-baseline justify-between gap-2 border-t border-ink/10 pt-4">
           <h2 className="font-serif text-lg font-semibold tracking-tight">
@@ -522,9 +552,12 @@ export default function PricingPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {TIERS.map((tier) => {
           const isCurrent = currentTier === tier.id;
-          // Owns this exact tier *and* the same set of levels → nothing to change.
+          // Owns this exact tier, levels, and profession → nothing to change.
           const isExactCurrent =
-            isCurrent && tier.priceUsd > 0 && sameLevels(selectedLevels, ownedLevels);
+            isCurrent &&
+            tier.priceUsd > 0 &&
+            sameLevels(selectedLevels, ownedLevels) &&
+            !professionSwap;
           const perModule = drillsPerModule(tier);
           // Once on a paid plan, move the highlight to the current tier and drop
           // the "Popular" flag; otherwise keep highlighting the popular tier.
@@ -623,6 +656,10 @@ export default function PricingPage() {
                       <div className="rounded-md border border-ink/15 px-4 py-2 text-center text-sm font-medium text-ink-mute">
                         Current plan
                       </div>
+                    ) : professionSwap ? (
+                      <div className="rounded-md border border-ink/10 px-4 py-2 text-center text-xs text-ink-mute">
+                        Cancel to switch professions
+                      </div>
                     ) : isDowngrade ? (
                       <div className="rounded-md border border-ink/10 px-4 py-2 text-center text-xs text-ink-mute">
                         Cancel to move to a lower plan
@@ -693,9 +730,11 @@ export default function PricingPage() {
       <div className="rounded-lg border border-ink/10 bg-white/50 p-4 text-xs leading-relaxed text-ink-mute">
         <p className="font-medium text-ink">Subscription terms</p>
         <p className="mt-1">
-          By subscribing you agree that: plans are priced per career level and billed{" "}
-          <span className="font-medium text-ink">annually</span>, and renew automatically each
-          year; you can cancel anytime to stop the next renewal and keep full access until your
+          By subscribing you agree that: plans are priced per career level and per
+          profession, and billed <span className="font-medium text-ink">annually</span>,
+          renewing automatically each year; your plan unlocks drills for the profession and
+          level(s) you purchase (switching either requires canceling and re-subscribing);
+          you can cancel anytime to stop the next renewal and keep full access until your
           renewal date;{" "}
           <span className="font-medium text-ink">annual plans are non-refundable</span>. Upgrades
           are charged immediately (prorated). AI coaching is generated by software and is meant

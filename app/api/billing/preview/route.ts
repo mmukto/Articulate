@@ -4,6 +4,7 @@ import { CLERK_ENABLED } from "@/lib/clerk-config";
 import { getStripe, STRIPE_ENABLED, priceIdForTier } from "@/lib/stripe";
 import { tierById } from "@/lib/tiers";
 import { parseLevels } from "@/lib/levels";
+import { parseProfessions } from "@/lib/professions";
 import { readSubscription } from "@/lib/entitlements";
 
 export const runtime = "nodejs";
@@ -28,10 +29,13 @@ export async function POST(req: NextRequest) {
   const tier = tierById((body as { tier?: string })?.tier);
   const priceId = priceIdForTier(tier.id);
   const levels = parseLevels((body as { levels?: unknown })?.levels);
+  const professions = parseProfessions((body as { profession?: unknown })?.profession);
   if (tier.id === "free" || !priceId || levels.length === 0) {
     return NextResponse.json({ amountDueNow: null }, { status: 400 });
   }
-  const quantity = levels.length;
+  // Quantity mirrors checkout: levels × professions (professions default to
+  // the subscription's own when the body omits one).
+  const quantity = levels.length * Math.max(1, professions.length);
 
   const client = await clerkClient();
   const user = await client.users.getUser(userId);

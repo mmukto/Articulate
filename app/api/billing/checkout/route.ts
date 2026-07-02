@@ -4,15 +4,19 @@ import { CLERK_ENABLED } from "@/lib/clerk-config";
 import { getStripe, STRIPE_ENABLED, priceIdForTier } from "@/lib/stripe";
 import { tierById } from "@/lib/tiers";
 import { parseLevels } from "@/lib/levels";
+import { parseProfessions } from "@/lib/professions";
 import { readSubscription, setUserSubscription } from "@/lib/entitlements";
 
 export const runtime = "nodejs";
 
-// Start (or change) an annual subscription. Pricing is PER LEVEL: the chosen
-// tier's price is billed once per selected career level (quantity = number of
-// levels), so all three levels cost 3× one level. For a first purchase we open
-// Stripe Checkout; if the user already has an active subscription we update it
-// in place (new tier/levels, prorated) and return them to the pricing page.
+// Start (or change) an annual subscription. Pricing is PER LEVEL and PER
+// PROFESSION: the chosen tier's price is billed once per selected career level
+// per selected profession (Stripe quantity = levels × professions; the pricing
+// page currently sells one profession per subscription). For a first purchase
+// we open Stripe Checkout; if the user already has an active subscription we
+// update it in place (higher tier / added levels, prorated, same professions)
+// and return them to the pricing page. Swapping a profession or level requires
+// cancel + re-subscribe.
 export async function POST(req: NextRequest) {
   if (!CLERK_ENABLED) {
     return NextResponse.json({ error: "Sign-in is required to subscribe." }, { status: 400 });
@@ -44,9 +48,23 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  const quantity = levels.length;
-  const levelsCsv = levels.join(",");
-  const metadata = { userId, tier: tier.id, levels: levelsCsv };
+  const professions = parseProfessions(
+    (body as { profession?: unknown })?.profession ??
+      (body as { professions?: unknown })?.professions,
+  );
+  if (professions.length === 0) {
+    return NextResponse.json(
+      { error: "Pick a profession to subscribe." },
+      { status: 400 },
+    );
+  }
+  const quantity = levels.length * professions.length;
+  const metadata = {
+    userId,
+    tier: tier.id,
+    levels: levels.join(","),
+    professions: professions.join(","),
+  };
 
   const stripe = getStripe();
   const client = await clerkClient();
@@ -61,19 +79,29 @@ export async function POST(req: NextRequest) {
     sub.tier !== "free" &&
     (!sub.expiresAt || sub.expiresAt > Date.now());
   if (hasActive) {
-    // Upgrades only, no free swaps: you may ADD levels and/or move to a HIGHER
-    // tier (charged immediately), but not drop/swap an owned level or move to a
-    // lower tier in place — those require cancel + re-subscribe.
+    // Upgrades only, no free swaps: you may ADD levels/professions and/or move
+    // to a HIGHER tier (charged immediately), but not drop/swap an owned level
+    // or profession, or move to a lower tier in place — those require cancel +
+    // re-subscribe.
     const ownedLevels = sub!.levels ?? [];
+    // Pre-professions subscriptions covered the original general library.
+    const ownedProfessions =
+      sub!.professions && sub!.professions.length > 0
+        ? sub!.professions
+        : (["business"] as const);
     const currentTier = tierById(sub!.tier);
-    const keepsAllOwned = ownedLevels.every((l) => levels.includes(l));
-    const currentTotal = currentTier.priceUsd * Math.max(1, ownedLevels.length);
-    const newTotal = tier.priceUsd * levels.length;
+    const keepsAllOwned =
+      ownedLevels.every((l) => levels.includes(l)) &&
+      ownedProfessions.every((p) => professions.includes(p));
+    const currentTotal =
+      currentTier.priceUsd * Math.max(1, ownedLevels.length) *
+      Math.max(1, ownedProfessions.length);
+    const newTotal = tier.priceUsd * levels.length * professions.length;
     if (!keepsAllOwned || tier.priceUsd < currentTier.priceUsd) {
       return NextResponse.json(
         {
           error:
-            "To switch or drop a career level, or move to a lower plan, cancel and re-subscribe.",
+            "To switch or drop a career level or profession, or move to a lower plan, cancel and re-subscribe.",
         },
         { status: 400 },
       );
@@ -100,6 +128,7 @@ export async function POST(req: NextRequest) {
       await setUserSubscription(userId, {
         tier: tier.id,
         levels,
+        professions,
         cancelAtPeriodEnd: false,
         expiresAt: sub!.expiresAt,
         stripeCustomerId: sub!.stripeCustomerId,

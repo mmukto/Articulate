@@ -13,7 +13,11 @@ import {
 import { DEFAULT_LEVEL, LEVEL_IDS, parseLevels, readLevel, type Level } from "./levels";
 import {
   DEFAULT_PROFESSION,
+  PROFESSION_IDS,
+  PROFESSION_MAP,
+  hasChosenProfession,
   levelInfoFor,
+  parseProfessions,
   readProfession,
   type Profession,
 } from "./professions";
@@ -30,6 +34,11 @@ export interface Subscription {
   /** Career levels the user has paid for. Pricing is per level — the tier price
    *  buys each level in this list (so all three levels cost 3× one level). */
   levels?: Level[];
+  /** Professions the user has paid for. Pricing is also per profession (Stripe
+   *  quantity = levels × professions); the checkout currently sells one
+   *  profession per subscription. Missing on pre-professions subscriptions,
+   *  which resolve to ["business"] — the library that existed when they bought. */
+  professions?: Profession[];
   /** Epoch ms when paid access lapses; after this the user reverts to Free. */
   expiresAt?: number;
   /** True once the user has scheduled cancellation: access continues until
@@ -47,6 +56,9 @@ export function readSubscription(privateMetadata: unknown): Subscription | null 
   return {
     tier: s.tier as TierId,
     levels: Array.isArray(s.levels) ? parseLevels(s.levels) : undefined,
+    professions: Array.isArray(s.professions)
+      ? parseProfessions(s.professions)
+      : undefined,
     expiresAt: typeof s.expiresAt === "number" ? s.expiresAt : undefined,
     cancelAtPeriodEnd: s.cancelAtPeriodEnd === true ? true : undefined,
     stripeCustomerId:
@@ -92,6 +104,20 @@ export function effectiveLevels(privateMetadata: unknown): Level[] {
   return lv;
 }
 
+/**
+ * Professions the user has actually paid for (empty when on Free). Unlike
+ * levels, a MISSING list does not fail closed: subscriptions sold before
+ * professions existed covered the original general library, so they resolve
+ * to ["business"] — exactly what those subscribers bought. New checkouts
+ * always record an explicit list.
+ */
+export function effectiveProfessions(privateMetadata: unknown): Profession[] {
+  const sub = readSubscription(privateMetadata);
+  if (!isActivePaid(sub)) return [];
+  const pr = sub!.professions ?? [];
+  return pr.length > 0 ? pr : [DEFAULT_PROFESSION];
+}
+
 // Comp accounts: emails/usernames listed in COMP_USER_EMAILS (server-only env,
 // comma-separated) get full Max access with no subscription, and the AI cap is
 // bypassed (see lib/limits.ts). Kept in env, not code, so the addresses stay
@@ -132,15 +158,25 @@ export function levelsForUser(user: ClerkUserLike): Level[] {
   return effectiveLevels(user.privateMetadata);
 }
 
+/** Professions a full Clerk user's plan covers: all of them if comp, else paid. */
+export function professionsForUser(user: ClerkUserLike): Profession[] {
+  if (isCompUser(user)) return [...PROFESSION_IDS];
+  return effectiveProfessions(user.privateMetadata);
+}
+
 /**
  * The user's annual AI-feedback allowance. The per-tier budget is 1/3 of the
- * per-level price, so a user who bought N levels (paying N× the price) gets N×
- * the allowance. Free (and comp, who bypass the cap anyway) get one unit.
+ * per-(level × profession) price, so a user who bought N levels × M professions
+ * (paying N×M× the price) gets N×M× the allowance. Free (and comp, who bypass
+ * the cap anyway) get one unit.
  */
 export function aiBudgetUsdForUser(user: ClerkUserLike): number {
   const tier = tierForUser(user);
-  const count = isCompUser(user) ? 1 : effectiveLevels(user.privateMetadata).length;
-  const budget = tier.aiBudgetUsd * Math.max(1, count);
+  const units = isCompUser(user)
+    ? 1
+    : effectiveLevels(user.privateMetadata).length *
+      effectiveProfessions(user.privateMetadata).length;
+  const budget = tier.aiBudgetUsd * Math.max(1, units);
   return Math.round(budget * 100) / 100;
 }
 
@@ -173,25 +209,47 @@ export interface Entitlements {
   tier: Tier;
   /** Career levels the user has paid for (all of them for comp accounts). */
   levels: Level[];
+  /** Professions the user's plan covers (all of them for comp accounts). */
+  professions: Profession[];
   /** The user's chosen career level (preference) — for free users this is the
    *  single level the sampler is locked to. */
   level: Level;
-  /** The user's chosen profession (free preference, switchable anytime — it
-   *  selects which drill bank they see; it is never priced or purchased). */
+  /** The PRACTICE profession — the chosen preference, clamped to the plan:
+   *  paid users are clamped onto a profession they bought; free users get the
+   *  one profession they chose (locked once chosen); comp users roam freely. */
   profession: Profession;
+  /** True when the profession can't be changed in the UI (free once chosen,
+   *  or paid — switching a paid profession means changing the plan). */
+  professionLocked: boolean;
   comp: boolean;
 }
 
-/** Tier + purchased levels + chosen level/profession + comp flag in one Clerk read. */
+/** Tier + purchased levels/professions + chosen level/profession + comp flag
+ *  in one Clerk read. */
 export async function getUserEntitlements(userId: string): Promise<Entitlements> {
   const client = await clerkClient();
   const user = await client.users.getUser(userId);
+  const comp = isCompUser(user);
+  const professions = professionsForUser(user);
+  const pref = readProfession(user.unsafeMetadata);
+  // Paid users practice within what they bought; a stale preference falls back
+  // to a purchased profession instead of silently showing an unpaid bank.
+  const profession =
+    comp || professions.length === 0
+      ? pref
+      : professions.includes(pref)
+        ? pref
+        : professions[professions.length - 1];
   return {
     tier: tierForUser(user),
     levels: levelsForUser(user),
+    professions,
     level: readLevel(user.unsafeMetadata),
-    profession: readProfession(user.unsafeMetadata),
-    comp: isCompUser(user),
+    profession,
+    professionLocked:
+      !comp &&
+      (professions.length > 0 || hasChosenProfession(user.unsafeMetadata)),
+    comp,
   };
 }
 
@@ -203,8 +261,10 @@ export async function getCurrentEntitlements(): Promise<Entitlements> {
   const guest = {
     tier: FREE_TIER,
     levels: [] as Level[],
+    professions: [] as Profession[],
     level: DEFAULT_LEVEL,
     profession: DEFAULT_PROFESSION,
+    professionLocked: false,
     comp: false,
   };
   if (!CLERK_ENABLED) return guest;
@@ -224,12 +284,12 @@ export async function getCurrentLevel(): Promise<Level> {
 /**
  * The single server-side drill entitlement gate, shared by the feedback and
  * speak routes (never trust the client — the module page UI mirrors this, but
- * this is what's enforced). Pricing is per level: a purchased level unlocks
- * the tier's full per-module count; otherwise the Free sampler applies — the
- * first drill per module in the first FREE_MODULE_LIMIT modules, at the
- * user's chosen (locked) level. Professions are a free preference, so the
- * same per-level rule applies within whichever profession the drill belongs
- * to (levelIndex is the drill's position in its level+profession group).
+ * this is what's enforced). Pricing is per level AND per profession: a drill
+ * is fully unlocked (the tier's per-module count) only when the user's plan
+ * covers both the drill's level and its profession. Otherwise the Free
+ * sampler applies — the first drill per module in the first
+ * FREE_MODULE_LIMIT modules, at the user's chosen (locked) level and
+ * profession only. Comp/owner accounts (COMP_USER_EMAILS) bypass everything.
  */
 export function drillAccess(
   ent: Entitlements,
@@ -237,9 +297,12 @@ export function drillAccess(
 ): { allowed: true } | { allowed: false; error: string } {
   if (ent.comp) return { allowed: true }; // comp/owner accounts see everything
 
-  const purchased = ent.levels.includes(found.level);
+  const purchased =
+    ent.levels.includes(found.level) && ent.professions.includes(found.profession);
   const freeOk =
-    found.module.number <= FREE_MODULE_LIMIT && found.level === ent.level;
+    found.module.number <= FREE_MODULE_LIMIT &&
+    found.level === ent.level &&
+    found.profession === ent.profession;
   const allowed = purchased
     ? drillsPerModule(ent.tier)
     : freeOk
@@ -247,13 +310,18 @@ export function drillAccess(
       : 0;
   if (found.levelIndex < allowed) return { allowed: true };
 
+  const paid = ent.levels.length > 0;
   const error = purchased
     ? "This drill is part of a higher plan. Upgrade to unlock it."
-    : found.module.number > FREE_MODULE_LIMIT
-      ? `Free practice covers the first ${FREE_MODULE_LIMIT} modules. Subscribe to unlock the full course.`
-      : found.level !== ent.level
-        ? "Free practice is locked to your chosen level. Subscribe to unlock other levels."
-        : `Subscribe to unlock all drills at the ${levelInfoFor(found.profession, found.level).name} level.`;
+    : paid && !ent.professions.includes(found.profession)
+      ? `Your plan doesn't include the ${PROFESSION_MAP[found.profession].name} profession. Switching professions requires changing your plan.`
+      : found.module.number > FREE_MODULE_LIMIT
+        ? `Free practice covers the first ${FREE_MODULE_LIMIT} modules. Subscribe to unlock the full course.`
+        : found.level !== ent.level
+          ? "Free practice is locked to your chosen level. Subscribe to unlock other levels."
+          : found.profession !== ent.profession
+            ? "Free practice is locked to your chosen profession. Subscribe to unlock other professions."
+            : `Subscribe to unlock all drills at the ${levelInfoFor(found.profession, found.level).name} level.`;
   return { allowed: false, error };
 }
 

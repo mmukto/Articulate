@@ -26,7 +26,7 @@ const HOME_FAQ = [
   },
   {
     q: "Is there a free version?",
-    a: "Yes. A free account unlocks the first three modules with one AI-coached drill each, at your chosen career level. Paid plans unlock more drills across all ten modules.",
+    a: "Yes. A free account unlocks the first three modules with one AI-coached drill each, at the career level and profession you choose. Paid plans unlock more drills across all ten modules for the profession and level(s) on your plan.",
   },
 ];
 
@@ -158,8 +158,8 @@ export default async function HomePage() {
           <span className="font-medium text-ink">your profession</span>: business,
           software engineering, medicine, law, finance, sales &amp; marketing,
           consulting, operations, or student (high school, undergraduate,
-          postgraduate). Pick your profession and level when you join; change them
-          anytime. Go in order, or straight to a weak spot.
+          postgraduate). Your plan covers the profession and level(s) you choose when
+          you join. Go in order, or straight to a weak spot.
         </p>
         <SignedIn>
           <CourseProgress keys={professionDrillKeys} />

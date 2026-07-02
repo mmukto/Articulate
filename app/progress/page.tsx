@@ -57,7 +57,7 @@ export default async function ProgressPage() {
               module or the Plans page.
             </p>
             <div className="mt-3 space-y-3">
-              <ProfessionPicker value={ent.profession} />
+              <ProfessionPicker value={ent.profession} locked={ent.professionLocked} />
               <CurrentLevel />
             </div>
           </section>

@@ -198,6 +198,7 @@ export default async function ModulePage({ params }: { params: { slug: string } 
             tierName={ent.tier.name}
             purchasedLevels={ent.levels}
             profession={ent.profession}
+            professionLocked={ent.professionLocked}
           />
         </SignedIn>
         <SignedOut>

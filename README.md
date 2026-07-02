@@ -78,10 +78,13 @@ home-screen icon launches full-screen with no browser chrome.
   per-module breakdown and summary stats.
 
 - **Subscription plans** (`/pricing`, optional — needs Stripe): Free unlocks a sampler
-  (1 drill each in the first 3 modules); Starter / Plus / Pro / Max ($4.99–$49.99 per
-  career level, per year) unlock 3/6/12/25 drills per module for each level purchased.
-  Plans are annual, upgradable in place (prorated), and cancelable at period end
-  (non-refundable). Without `STRIPE_SECRET_KEY` the app runs free-only.
+  (1 drill each in the first 3 modules, at the chosen level + profession, locked once
+  chosen); Starter / Plus / Pro / Max ($4.99–$49.99 per career level per profession,
+  per year) unlock 3/6/12/25 drills per module for the purchased level(s) in the
+  purchased profession. Plans are annual, upgradable in place (prorated; add levels or
+  raise the tier — switching profession or level requires cancel + re-subscribe), and
+  cancelable at period end (non-refundable). Comp accounts via `COMP_USER_EMAILS` get
+  everything. Without `STRIPE_SECRET_KEY` the app runs free-only.
 
 - **Free guides** (`/guides`) — public, SEO-indexed articles on the core principles
   (being articulate, BLUF, cutting filler words), cross-linked into the course, with

@@ -4,6 +4,7 @@ import {
   aiBudgetUsdForUser,
   isCompUser,
   levelsForUser,
+  professionsForUser,
   readSubscription,
   tierForUser,
 } from "./entitlements";
@@ -170,9 +171,11 @@ export interface UsageSummary {
   /** Levels the user has paid for (drives the pricing-page selection). */
   levels: Level[];
   levelCount: number;
+  /** Professions the user's plan covers (empty on Free; all for comp). */
+  professions: Profession[];
   /** The user's currently chosen career level (preference, not entitlement). */
   currentLevel: Level;
-  /** The user's chosen profession (free preference; drives signup/pricing UI). */
+  /** The user's chosen profession preference (drives signup/pricing UI). */
   currentProfession: Profession;
   /** True if the paid plan is set to cancel at period end (access until accessUntil). */
   cancelAtPeriodEnd: boolean;
@@ -189,6 +192,7 @@ export async function getUsageSummary(userId: string): Promise<UsageSummary> {
   const user = await client.users.getUser(userId);
   const tier = tierForUser(user);
   const levels = levelsForUser(user);
+  const professions = professionsForUser(user);
   const comp = isCompUser(user);
   // Comp accounts get access regardless of any (possibly stale) subscription, so
   // don't surface its cancel/period-end state for them.
@@ -207,6 +211,7 @@ export async function getUsageSummary(userId: string): Promise<UsageSummary> {
     tierName: tier.name,
     levels,
     levelCount: levels.length,
+    professions,
     currentLevel: readLevel(user.unsafeMetadata),
     currentProfession: readProfession(user.unsafeMetadata),
     cancelAtPeriodEnd: subscription?.cancelAtPeriodEnd === true,

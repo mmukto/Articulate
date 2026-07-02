@@ -26,6 +26,7 @@ export function ModuleDrills({
   tierName,
   purchasedLevels,
   profession,
+  professionLocked,
 }: {
   module: Module;
   tierCount: number;
@@ -33,6 +34,9 @@ export function ModuleDrills({
   tierName: string;
   purchasedLevels: Level[];
   profession: Profession;
+  /** Professions are paid: locked for paid plans and for free users who
+   *  already made their one choice (comp accounts stay unlocked). */
+  professionLocked: boolean;
 }) {
   const { user } = useMaybeUser();
   const [override, setOverride] = useState<Level | null>(null);
@@ -66,8 +70,8 @@ export function ModuleDrills({
 
   return (
     <div className="space-y-6">
-      {/* Profession switcher (free preference; server re-filters on change) */}
-      <ProfessionPicker value={profession} />
+      {/* Profession display/switcher (professions are paid; usually locked) */}
+      <ProfessionPicker value={profession} locked={professionLocked} />
 
       {/* Level switcher / onboarding (labels adapt to the profession) */}
       <LevelPicker

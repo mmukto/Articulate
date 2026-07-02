@@ -5,19 +5,27 @@ import { useRouter } from "next/navigation";
 import { PROFESSIONS, PROFESSION_MAP, type Profession } from "@/lib/professions";
 import { useMaybeUser } from "@/components/auth";
 
-// Profession switcher. Unlike career levels, professions are a free preference:
-// any user can switch anytime (it selects which drill bank they practice; the
-// per-level pricing gate applies within each profession). The choice lives in
-// Clerk unsafeMetadata, like the level. Because the module page filters drills
-// by profession on the SERVER, switching triggers a router refresh so the
-// freshly-filtered drills stream in.
+// Profession switcher. Professions are PAID, like levels: a plan covers the
+// profession(s) bought at checkout, and free users lock to the one profession
+// they choose. So the picker is usually LOCKED — it shows the current
+// profession with an upgrade/plan note — and is only pickable for a free user
+// who hasn't chosen yet (or comp/owner accounts, who roam everything). The
+// choice lives in Clerk unsafeMetadata; the module page filters drills by
+// profession on the SERVER, so changes trigger a router refresh.
 export function ProfessionPicker({
   value,
   heading,
+  locked = false,
+  lockNote,
 }: {
   /** Server-resolved current profession (keeps first paint consistent). */
   value: Profession;
   heading?: string;
+  /** When true, the profession can't be changed here (paid plans cover
+   *  specific professions; free plans lock to the first choice). */
+  locked?: boolean;
+  /** Shown under the picker when locked (why, and what to do about it). */
+  lockNote?: string;
 }) {
   const { user } = useMaybeUser();
   const router = useRouter();
@@ -33,7 +41,7 @@ export function ProfessionPicker({
   }
 
   async function pick(next: Profession) {
-    if (next === current || saving) return;
+    if (locked || next === current || saving) return;
     setCurrent(next);
     if (!user) return;
     setSaving(true);
@@ -59,14 +67,18 @@ export function ProfessionPicker({
       <div className="flex flex-wrap gap-2">
         {PROFESSIONS.map((p) => {
           const isCurrent = current === p.id;
+          // When locked, only show the current profession.
+          if (locked && !isCurrent) return null;
           return (
             <button
               key={p.id}
               type="button"
               onClick={() => pick(p.id)}
-              disabled={saving}
+              disabled={saving || locked}
               title={p.blurb}
-              className={`rounded-md border px-3 py-1.5 text-sm transition-colors disabled:opacity-60 ${
+              className={`rounded-md border px-3 py-1.5 text-sm transition-colors disabled:opacity-100 ${
+                locked ? "cursor-default" : "disabled:opacity-60"
+              } ${
                 isCurrent
                   ? "border-accent bg-accent text-white"
                   : "border-ink/15 text-ink-soft hover:border-accent hover:text-accent"
@@ -79,8 +91,21 @@ export function ProfessionPicker({
       </div>
       <p className="mt-2 text-xs text-ink-mute">
         {PROFESSION_MAP[current].blurb} Drills and coaching are written for your
-        profession — switch anytime.
+        profession.
       </p>
+      {locked ? (
+        <p className="mt-1 text-xs text-ink-mute">
+          {lockNote ?? (
+            <>
+              Plans cover one profession.{" "}
+              <a href="/pricing" className="text-accent hover:underline">
+                See plans
+              </a>{" "}
+              to add or switch.
+            </>
+          )}
+        </p>
+      ) : null}
     </div>
   );
 }

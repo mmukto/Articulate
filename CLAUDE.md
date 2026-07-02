@@ -46,15 +46,19 @@ in `lib/site.ts` (`SITE_URL`, default `https://iarticulate.ca`).
   served it and `lib/limits.ts` meters spend at that model's per-token price (unknown
   models are metered at the highest listed price, failing safe).
 - **Subscription tiers** (`lib/tiers.ts`): Starter / Plus / Pro / Max unlock
-  30 / 60 / 120 / 250 **total** drills *per purchased career level, per profession*
-  (spread evenly = 3/6/12/25 per module, via `drillsPerModule`; professions are a free
-  preference, so a subscriber can practice their tier's count in every profession's
-  bank). Free is a sampler: 1 drill per module in the **first 3 modules only**
-  (`FREE_MODULE_LIMIT`), locked to the user's chosen level — but per profession, so a
-  free user who switches professions can sample up to 9 drills per module there. The
-  hard cost ceiling is always the per-user AI allowance (`lib/limits.ts`), not the
-  drill counts. The single gate implementation is `drillAccess` in
-  `lib/entitlements.ts`, shared by the feedback and speak routes.
+  30 / 60 / 120 / 250 **total** drills *per purchased career level, in the purchased
+  profession(s)* (spread evenly = 3/6/12/25 per module, via `drillsPerModule`).
+  **Professions are paid, like levels**: Stripe quantity = levels × professions (the
+  pricing page currently sells ONE profession per subscription); the plan records
+  `professions` in metadata and swapping a profession or level requires cancel +
+  re-subscribe (in-place upgrades may only ADD levels / raise the tier within the
+  owned profession). Free is a sampler: 1 drill per module in the **first 3 modules
+  only** (`FREE_MODULE_LIMIT`), locked to the user's chosen level AND chosen
+  profession (both lock on first choice). Comp accounts (`COMP_USER_EMAILS` — the
+  owners) bypass all of it. Legacy paid subs with no recorded professions resolve to
+  `["business"]` (the library they bought), NOT fail-closed like levels. The single
+  gate implementation is `drillAccess` in `lib/entitlements.ts`, shared by the
+  feedback and speak routes; the AI allowance scales with levels × professions.
   **Pricing is per career level** (`lib/levels.ts`: early / mid / senior): the tier price
   is billed once per level bought (Stripe quantity = level count), and only purchased
   levels unlock the tier's drill count — other levels fall back to the Free sampler.
@@ -74,11 +78,12 @@ in `lib/site.ts` (`SITE_URL`, default `https://iarticulate.ca`).
   their pre-professions order, then each profession bank in `PROFESSION_BANKS` order).
   Never reorder/remove anything; new profession banks append at the END of
   `PROFESSION_BANKS`; to add drills to an existing profession, append a NEW
-  supplemental bank — never grow an existing bank in place. The profession is a FREE preference in Clerk
-  `unsafeMetadata` (switch anytime; never priced); the per-level pricing gate applies
-  within each profession (`getDrill().levelIndex` is the drill's position within its
-  level+profession group). Module, progress, and home pages filter drills by profession
-  on the **server**; client components must import the rubric from `lib/rubric.ts`, not
+  supplemental bank — never grow an existing bank in place. The *practice* profession
+  preference lives in Clerk `unsafeMetadata` but is clamped server-side to the plan's
+  purchased professions (`getUserEntitlements`; free users lock to their first choice,
+  comp accounts roam freely); `getDrill().levelIndex` is the drill's position within
+  its level+profession group. Module, progress, and home pages filter drills by the
+  clamped profession on the **server**; client components must import the rubric from `lib/rubric.ts`, not
   `lib/course.ts`, to keep the multi-thousand-drill library out of client bundles. The
   AI coach calibrates to profession + level (`lib/prompt.ts` coachNotes). Professions
   can override how the three levels are NAMED and coached via `levelInfo` /

@@ -139,9 +139,27 @@ export const PROFESSION_MAP: Record<Profession, ProfessionInfo> =
     {} as Record<Profession, ProfessionInfo>,
   );
 
+/** All profession ids in canonical (display) order. */
+export const PROFESSION_IDS: Profession[] = PROFESSIONS.map((p) => p.id);
+
 // The original drill library is general-workplace content, so it doubles as the
 // default profession for existing users who never picked one.
 export const DEFAULT_PROFESSION: Profession = "business";
+
+/**
+ * Parse a list of purchased professions from an array or a comma-separated
+ * string (as stored in Clerk metadata / Stripe metadata), mirroring
+ * parseLevels. Invalid ids are dropped; result de-duped in canonical order.
+ */
+export function parseProfessions(input: unknown): Profession[] {
+  const raw = Array.isArray(input)
+    ? input
+    : typeof input === "string"
+      ? input.split(",")
+      : [];
+  const seen = new Set<string>(raw.map((r) => String(r).trim()));
+  return PROFESSION_IDS.filter((id) => seen.has(id));
+}
 
 // Own-property check: the ids come from client-writable unsafeMetadata, and a
 // plain `in` would accept prototype keys like "constructor" as professions.
