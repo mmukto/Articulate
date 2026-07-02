@@ -1,6 +1,7 @@
 // Shared domain types for the articulation course and the AI feedback engine.
 
 import type { Level } from "./levels";
+import type { Profession } from "./professions";
 
 /** A scoring dimension the AI coach evaluates a response against. */
 export type DimensionKey =
@@ -54,6 +55,9 @@ export interface Drill {
   /** Career level this drill is pitched at. Defaults to "senior" when unset
    *  (the original library was senior-level). */
   level?: Level;
+  /** Profession this drill is written for. Defaults to "business" when unset
+   *  (the original library is general-workplace content). */
+  profession?: Profession;
 }
 
 export interface Module {

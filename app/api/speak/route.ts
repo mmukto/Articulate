@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unknown drill." }, { status: 404 });
   }
 
-  // Coaching is calibrated to the drill's own career level.
+  // Coaching is calibrated to the drill's own career level and profession.
   const level: Level = found.level;
 
   // Server-authoritative gate (never trust the client): pricing is per level —
@@ -115,6 +115,7 @@ export async function POST(req: NextRequest) {
       audio,
       typeof mimeType === "string" && mimeType ? mimeType : "audio/mp4",
       level,
+      found.profession,
     );
     if (userId && gate) {
       await recordSpend(userId, gate, estimateCostUsd(usage), { moduleSlug, drillId });

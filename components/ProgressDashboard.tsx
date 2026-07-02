@@ -1,8 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { MODULES } from "@/lib/course";
 import { useProgress, drillKey, type DrillStat } from "@/lib/progress";
+
+// Compact course shape passed from the server (app/progress/page.tsx), already
+// filtered to the user's profession. Passing data as props — instead of
+// importing MODULES here — keeps the multi-thousand-drill library out of the
+// client bundle.
+export interface ProgressModule {
+  slug: string;
+  number: number;
+  title: string;
+  drills: { id: string; title: string }[];
+}
 
 function scoreColor(score: number): string {
   if (score >= 80) return "text-emerald-700";
@@ -19,14 +29,14 @@ function StatCard({ value, label }: { value: string; label: string }) {
   );
 }
 
-export function ProgressDashboard() {
+export function ProgressDashboard({ modules }: { modules: ProgressModule[] }) {
   const { data, mounted } = useProgress();
 
   if (!mounted) {
     return <p className="text-ink-mute">Loading your progress…</p>;
   }
 
-  const allKeys = MODULES.flatMap((m) =>
+  const allKeys = modules.flatMap((m) =>
     m.drills.map((d) => drillKey(m.slug, d.id)),
   );
   const practicedKeys = allKeys.filter((k) => k in data);
@@ -37,7 +47,7 @@ export function ProgressDashboard() {
         practicedKeys.reduce((sum, k) => sum + (data[k]?.best ?? 0), 0) / done,
       )
     : 0;
-  const modulesComplete = MODULES.filter((m) =>
+  const modulesComplete = modules.filter((m) =>
     m.drills.every((d) => drillKey(m.slug, d.id) in data),
   ).length;
 
@@ -49,7 +59,7 @@ export function ProgressDashboard() {
           Your scores and completed drills will show up here as you go.
         </p>
         <Link
-          href={`/modules/${MODULES[0].slug}`}
+          href={`/modules/${modules[0]?.slug ?? ""}`}
           className="mt-5 inline-block rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-transform hover:-translate-y-0.5"
         >
           Start with Module 1
@@ -64,12 +74,12 @@ export function ProgressDashboard() {
       <div className="grid gap-3 sm:grid-cols-3">
         <StatCard value={`${done}/${total}`} label="Drills practiced" />
         <StatCard value={`${avgBest}`} label="Avg. best score" />
-        <StatCard value={`${modulesComplete}/${MODULES.length}`} label="Modules complete" />
+        <StatCard value={`${modulesComplete}/${modules.length}`} label="Modules complete" />
       </div>
 
       {/* Per-module breakdown */}
       <div className="space-y-4">
-        {MODULES.map((m) => {
+        {modules.map((m) => {
           const rows = m.drills.map((d) => ({
             drill: d,
             stat: data[drillKey(m.slug, d.id)] as DrillStat | undefined,
@@ -125,7 +135,8 @@ export function ProgressDashboard() {
 
       <p className="text-xs text-ink-mute">
         Scores are your <strong>best</strong> per drill (written = overall; spoken =
-        average delivery). Synced to your account, so they follow you across devices.
+        average delivery), shown for your current profession. Synced to your account,
+        so they follow you across devices.
       </p>
     </div>
   );

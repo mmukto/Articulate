@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SignedIn, SignedOut, SignUpButton } from "@/components/auth";
-import { MODULES, DIMENSIONS, ALL_DRILL_KEYS } from "@/lib/course";
+import { MODULES, DIMENSIONS } from "@/lib/course";
+import { getCurrentEntitlements } from "@/lib/entitlements";
 import { CourseProgress } from "@/components/CourseProgress";
 import { ModuleProgressBadge } from "@/components/ModuleProgressBadge";
 import { JsonLd } from "@/components/JsonLd";
@@ -29,7 +30,21 @@ const HOME_FAQ = [
   },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  // Progress counts and per-module drill counts reflect the signed-in user's
+  // profession (guests and users who never picked one see the general
+  // business bank). Filtering here keeps drill keys small on the wire.
+  const ent = await getCurrentEntitlements();
+  const professionModules = MODULES.map((m) => ({
+    module: m,
+    drillIds: m.drills
+      .filter((d) => (d.profession ?? "business") === ent.profession)
+      .map((d) => d.id),
+  }));
+  const professionDrillKeys = professionModules.flatMap(({ module: m, drillIds }) =>
+    drillIds.map((id) => `${m.slug}/${id}`),
+  );
+
   const organizationLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
@@ -141,11 +156,14 @@ export default function HomePage() {
           Ten modules. Each pairs a short lesson and before/after examples with a deep
           bank of AI-coached drills, written for{" "}
           <span className="font-medium text-ink">three career levels — Early, Mid, and
-          Executive</span> — so every scenario meets you where you work. Pick your level
-          when you join; change it anytime. Go in order, or straight to a weak spot.
+          Executive</span> — and for{" "}
+          <span className="font-medium text-ink">your profession</span>: business,
+          software engineering, medicine, law, finance, sales &amp; marketing,
+          consulting, or operations. Pick your level and profession when you join;
+          change them anytime. Go in order, or straight to a weak spot.
         </p>
         <SignedIn>
-          <CourseProgress keys={ALL_DRILL_KEYS} />
+          <CourseProgress keys={professionDrillKeys} />
         </SignedIn>
         <SignedOut>
           <p className="mt-4 text-sm text-ink-mute">
@@ -158,7 +176,7 @@ export default function HomePage() {
           </p>
         </SignedOut>
         <ol className="mt-6 space-y-3">
-          {MODULES.map((m, i) => (
+          {professionModules.map(({ module: m, drillIds }, i) => (
             <li key={m.slug}>
               <Link
                 href={`/modules/${m.slug}`}
@@ -178,10 +196,7 @@ export default function HomePage() {
                   <span className="block text-sm text-ink-mute">{m.tagline}</span>
                 </span>
                 <span className="ml-auto hidden shrink-0 self-center text-sm text-ink-mute transition-colors group-hover:text-accent sm:block">
-                  <ModuleProgressBadge
-                    moduleSlug={m.slug}
-                    drillIds={m.drills.map((d) => d.id)}
-                  />
+                  <ModuleProgressBadge moduleSlug={m.slug} drillIds={drillIds} />
                 </span>
               </Link>
             </li>

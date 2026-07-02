@@ -44,7 +44,11 @@ home-screen icon launches full-screen with no browser chrome.
 
 - **10 modules**, each with a tight lesson, before/after examples, and a deep bank of
   AI-coached practice drills written for **three career levels** — Early career, Mid
-  career (manager), and Executive — 25 drills per level per module:
+  career (manager), and Executive — and for **eight professions** — general business
+  (default), software engineering, medicine, law, finance, sales & marketing,
+  consulting, and operations — 25 drills per level per profession per module. The
+  profession is a free preference (switch anytime); scenarios and AI coaching are
+  calibrated to it:
   1. Lead With the Point (BLUF)
   2. Start With the Audience (curse of knowledge)
   3. Structure That Carries (Pyramid, SCQA, PREP)
@@ -208,8 +212,12 @@ components/
 lib/
   types.ts                   # Shared domain + feedback types
   course.ts                  # Course content assembly (modules + merged drill banks)
-  drills-extra/early/mid.ts  # Drill banks per career level (25 per module each)
+  rubric.ts                  # Scoring dimensions (client-safe, no drill content)
+  drills-extra/early/mid.ts  # Business-profession drill banks (25 per module per level)
+  drills-<prof>-<level>.ts   # Profession drill banks (engineer/doctor/lawyer/finance/
+                             #   sales/consultant/operator × early/mid/senior)
   levels.ts                  # Career levels (early / mid / senior) + helpers
+  professions.ts             # Professions (free preference) + helpers
   tiers.ts                   # Subscription tiers, prices, per-module drill counts
   entitlements.ts            # Server-authoritative tier/level resolution + comp accounts
   limits.ts                  # Per-user annual AI-spend allowance (metering + gate)
@@ -227,12 +235,14 @@ lib/
 ## Extending the course
 
 Course content is plain data. To add a module, append a `Module` object to `MODULES` in
-`lib/course.ts`. To add a drill, append a `Drill` to the right career-level bank —
-`lib/drills-extra.ts` (senior), `lib/drills-early.ts`, or `lib/drills-mid.ts` — keyed by
-module slug; order within an array is the tier unlock order, so **append** (don't
-reorder or rename ids — the practiced-drill bitset indexes by position). The rubric,
-prompt, gating, and feedback UI all adapt automatically. Guides are the same idea in
-`lib/guides.ts`.
+`lib/course.ts`. To add a drill, append a `Drill` to the right bank — for the general
+business library, `lib/drills-extra.ts` (senior), `lib/drills-early.ts`, or
+`lib/drills-mid.ts`; for a profession, the matching `lib/drills-<profession>-<level>.ts` —
+keyed by module slug. Order within an array is the tier unlock order, so **append**
+(don't reorder or rename ids — the practiced-drill bitset indexes by position; new
+profession banks likewise get **appended** to `PROFESSION_BANKS` in `course.ts`, never
+reordered). The rubric, prompt, gating, and feedback UI all adapt automatically. Guides
+are the same idea in `lib/guides.ts`.
 
 ## Notes
 

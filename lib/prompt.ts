@@ -1,6 +1,7 @@
-import { DIMENSIONS, DIMENSION_MAP, DELIVERY_DIMENSIONS } from "./course";
+import { DIMENSIONS, DIMENSION_MAP, DELIVERY_DIMENSIONS } from "./rubric";
 import type { Drill, Module } from "./types";
 import { LEVEL_MAP, type Level } from "./levels";
+import { DEFAULT_PROFESSION, PROFESSION_MAP, type Profession } from "./professions";
 
 // Provider-agnostic prompts shared by every AI backend. Keeping these in one
 // place means Claude and Gemini grade against identical instructions.
@@ -25,6 +26,7 @@ export function buildUserPrompt(
   drill: Drill,
   response: string,
   level: Level = "senior",
+  profession: Profession = DEFAULT_PROFESSION,
 ): string {
   const focusLabels = drill.focus.map((k) => DIMENSION_MAP[k].label).join(", ");
   const rubric = DIMENSIONS.map(
@@ -32,7 +34,8 @@ export function buildUserPrompt(
   ).join("\n");
 
   return `# Learner
-Calibrate everything — your standards, examples, and the rewrite — to the learner's career stage. The learner is ${LEVEL_MAP[level].coachNote}
+Calibrate everything — your standards, examples, and the rewrite — to the learner's career stage and profession. The learner is ${LEVEL_MAP[level].coachNote}
+Professionally, the learner is ${PROFESSION_MAP[profession].coachNote} Keep your feedback, examples, and rewrite authentic to that professional world.
 
 # Module
 ${module.number}. ${module.title} — ${module.tagline}
@@ -75,13 +78,15 @@ export function buildSpokenPrompt(
   module: Module,
   drill: Drill,
   level: Level = "senior",
+  profession: Profession = DEFAULT_PROFESSION,
 ): string {
   const delivery = DELIVERY_DIMENSIONS.map(
     (d) => `- ${d.label} (${d.key}): ${d.description}`,
   ).join("\n");
 
   return `# Learner
-Calibrate your coaching to the speaker's career stage. The speaker is ${LEVEL_MAP[level].coachNote}
+Calibrate your coaching to the speaker's career stage and profession. The speaker is ${LEVEL_MAP[level].coachNote}
+Professionally, the speaker is ${PROFESSION_MAP[profession].coachNote} Keep the modelDelivery authentic to that professional world.
 
 # Module
 ${module.number}. ${module.title} — ${module.tagline}

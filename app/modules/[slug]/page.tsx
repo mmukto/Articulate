@@ -46,6 +46,16 @@ export default async function ModulePage({ params }: { params: { slug: string } 
   const hasPaid = ent.comp || ent.levels.length > 0;
   const moduleLocked = !hasPaid && module.number > FREE_MODULE_LIMIT;
 
+  // Filter drills to the user's profession on the server, so the client never
+  // downloads the other professions' banks (the full library is thousands of
+  // drills). Switching professions refreshes this page (ProfessionPicker).
+  const professionModule = {
+    ...module,
+    drills: module.drills.filter(
+      (d) => (d.profession ?? "business") === ent.profession,
+    ),
+  };
+
   return (
     <article className="space-y-12">
       {/* Header */}
@@ -184,11 +194,12 @@ export default async function ModulePage({ params }: { params: { slug: string } 
         </div>
         <SignedIn>
           <ModuleDrills
-            module={module}
+            module={professionModule}
             tierCount={tierCount}
             freeCount={FREE_DRILLS_PER_MODULE}
             tierName={ent.tier.name}
             purchasedLevels={ent.levels}
+            profession={ent.profession}
           />
         </SignedIn>
         <SignedOut>

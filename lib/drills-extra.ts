@@ -1,9 +1,10 @@
 import type { Drill } from "./types";
 
 // Additional drills that expand each module beyond its 2 hand-curated drills up
-// to 25, so the subscription tiers (10/30/60/120/250 total = 1/3/6/12/25 per
-// module) have content to unlock. Merged into each module's `drills` array in
-// course.ts. Keyed by module slug; order within each array is the unlock order.
+// to 25, so the subscription tiers (3/6/12/25 drills per module for paid plans,
+// plus the Free sampler) have content to unlock. Merged into each module's
+// `drills` array in course.ts. Keyed by module slug; order within each array is
+// the unlock order.
 export const EXTRA_DRILLS: Record<string, Drill[]> = {
   "lead-with-the-point": [
     {

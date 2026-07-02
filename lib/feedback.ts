@@ -1,4 +1,4 @@
-import { DIMENSIONS, DELIVERY_DIMENSIONS } from "./course";
+import { DIMENSIONS, DELIVERY_DIMENSIONS } from "./rubric";
 import {
   SYSTEM_PROMPT,
   buildUserPrompt,
@@ -8,6 +8,7 @@ import {
 import * as claude from "./providers/claude";
 import * as gemini from "./providers/gemini";
 import type { Level } from "./levels";
+import { DEFAULT_PROFESSION, type Profession } from "./professions";
 import type {
   DimensionKey,
   DeliveryKey,
@@ -52,11 +53,12 @@ export async function gradeResponse(
   drill: Drill,
   response: string,
   level: Level = "senior",
+  profession: Profession = DEFAULT_PROFESSION,
 ): Promise<{ feedback: Feedback; usage: Usage }> {
   const provider = activeProvider();
   if (!provider) throw new Error(NOT_CONFIGURED);
 
-  const user = buildUserPrompt(module, drill, response, level);
+  const user = buildUserPrompt(module, drill, response, level, profession);
   const raw =
     provider === "gemini"
       ? await gemini.grade(SYSTEM_PROMPT, user)
@@ -83,6 +85,7 @@ export async function gradeSpoken(
   audioBase64: string,
   mimeType: string,
   level: Level = "senior",
+  profession: Profession = DEFAULT_PROFESSION,
 ): Promise<{ feedback: SpokenFeedback; usage: Usage }> {
   if (!gemini.isConfigured()) {
     throw new Error(
@@ -91,7 +94,7 @@ export async function gradeSpoken(
   }
   const raw = await gemini.gradeAudio(
     SPOKEN_SYSTEM_PROMPT,
-    buildSpokenPrompt(module, drill, level),
+    buildSpokenPrompt(module, drill, level, profession),
     audioBase64,
     mimeType,
   );

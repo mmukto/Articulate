@@ -66,12 +66,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unknown drill." }, { status: 404 });
   }
 
-  // Coaching is calibrated to the drill's own career level.
+  // Coaching is calibrated to the drill's own career level and profession.
   const level: Level = found.level;
 
   // Server-authoritative gate (never trust the client): pricing is per level —
   // a level the user has paid for unlocks their full tier count; any other level
-  // exposes only the Free sampler.
+  // exposes only the Free sampler. Professions aren't priced: the same per-level
+  // rule applies within whichever profession the drill belongs to (levelIndex is
+  // the drill's position within its level+profession group).
   let gate: AccessGate | null = null;
   if (userId) {
     const ent = await getUserEntitlements(userId);
@@ -107,7 +109,13 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { feedback, usage } = await gradeResponse(found.module, found.drill, response, level);
+    const { feedback, usage } = await gradeResponse(
+      found.module,
+      found.drill,
+      response,
+      level,
+      found.profession,
+    );
     if (userId && gate) {
       await recordSpend(userId, gate, estimateCostUsd(usage), { moduleSlug, drillId });
     }

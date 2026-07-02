@@ -4,29 +4,35 @@ import { useState } from "react";
 import Link from "next/link";
 import type { Module } from "@/lib/types";
 import { LEVEL_MAP, readLevel, hasChosenLevel, type Level } from "@/lib/levels";
+import type { Profession } from "@/lib/professions";
 import { FREE_MODULE_LIMIT } from "@/lib/tiers";
 import { useMaybeUser } from "@/components/auth";
 import { DrillPractice } from "@/components/DrillPractice";
 import { LevelPicker } from "@/components/LevelPicker";
+import { ProfessionPicker } from "@/components/ProfessionPicker";
 
 // Renders a module's drills filtered to the signed-in user's career level, with
-// a level switcher / onboarding prompt. Level lives in Clerk unsafeMetadata
-// (client-writable, like progress). Pricing is per level: `purchasedLevels`
-// lists the levels the user has paid for — those unlock `tierCount` drills per
-// module; any other level shows only `freeCount` (the Free sampler). The API
-// enforces this server-side regardless of what's shown here.
+// a profession switcher and a level switcher / onboarding prompt. Level and
+// profession live in Clerk unsafeMetadata (client-writable, like progress).
+// The `module` prop arrives already filtered to the user's profession by the
+// server (see app/modules/[slug]/page.tsx). Pricing is per level:
+// `purchasedLevels` lists the levels the user has paid for — those unlock
+// `tierCount` drills per module; any other level shows only `freeCount` (the
+// Free sampler). The API enforces this server-side regardless of what's shown.
 export function ModuleDrills({
   module,
   tierCount,
   freeCount,
   tierName,
   purchasedLevels,
+  profession,
 }: {
   module: Module;
   tierCount: number;
   freeCount: number;
   tierName: string;
   purchasedLevels: Level[];
+  profession: Profession;
 }) {
   const { user } = useMaybeUser();
   const [override, setOverride] = useState<Level | null>(null);
@@ -60,6 +66,9 @@ export function ModuleDrills({
 
   return (
     <div className="space-y-6">
+      {/* Profession switcher (free preference; server re-filters on change) */}
+      <ProfessionPicker value={profession} />
+
       {/* Level switcher / onboarding */}
       <LevelPicker value={level} onChange={setOverride} locked={lockPicker} />
 

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { Drill, Feedback } from "@/lib/types";
-import { DIMENSION_MAP } from "@/lib/course";
+import { DIMENSION_MAP } from "@/lib/rubric";
 import { LEVEL_MAP } from "@/lib/levels";
 import { useProgress } from "@/lib/progress";
 import { ScoreBar } from "./ScoreBar";

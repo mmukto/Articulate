@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import type { Drill, SpokenFeedback } from "@/lib/types";
-import { DELIVERY_MAP } from "@/lib/course";
+import { DELIVERY_MAP } from "@/lib/rubric";
 import { useProgress } from "@/lib/progress";
 import { ScoreBar } from "./ScoreBar";
 import { SpeakButton } from "./SpeakButton";

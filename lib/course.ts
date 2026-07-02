@@ -1,91 +1,39 @@
-import type {
-  Dimension,
-  DimensionKey,
-  DeliveryDimension,
-  DeliveryKey,
-  Module,
-} from "./types";
+import type { Drill, Module } from "./types";
+import type { Profession } from "./professions";
 import { EXTRA_DRILLS } from "./drills-extra";
 import { EARLY_DRILLS } from "./drills-early";
 import { MID_DRILLS } from "./drills-mid";
+import { ENGINEER_EARLY_DRILLS } from "./drills-engineer-early";
+import { ENGINEER_MID_DRILLS } from "./drills-engineer-mid";
+import { ENGINEER_SENIOR_DRILLS } from "./drills-engineer-senior";
+import { DOCTOR_EARLY_DRILLS } from "./drills-doctor-early";
+import { DOCTOR_MID_DRILLS } from "./drills-doctor-mid";
+import { DOCTOR_SENIOR_DRILLS } from "./drills-doctor-senior";
+import { LAWYER_EARLY_DRILLS } from "./drills-lawyer-early";
+import { LAWYER_MID_DRILLS } from "./drills-lawyer-mid";
+import { LAWYER_SENIOR_DRILLS } from "./drills-lawyer-senior";
+import { FINANCE_EARLY_DRILLS } from "./drills-finance-early";
+import { FINANCE_MID_DRILLS } from "./drills-finance-mid";
+import { FINANCE_SENIOR_DRILLS } from "./drills-finance-senior";
+import { SALES_EARLY_DRILLS } from "./drills-sales-early";
+import { SALES_MID_DRILLS } from "./drills-sales-mid";
+import { SALES_SENIOR_DRILLS } from "./drills-sales-senior";
+import { CONSULTANT_EARLY_DRILLS } from "./drills-consultant-early";
+import { CONSULTANT_MID_DRILLS } from "./drills-consultant-mid";
+import { CONSULTANT_SENIOR_DRILLS } from "./drills-consultant-senior";
+import { OPERATOR_EARLY_DRILLS } from "./drills-operator-early";
+import { OPERATOR_MID_DRILLS } from "./drills-operator-mid";
+import { OPERATOR_SENIOR_DRILLS } from "./drills-operator-senior";
 
-export const DIMENSIONS: Dimension[] = [
-  {
-    key: "clarity",
-    label: "Clarity",
-    description:
-      "Could a busy executive grasp the point on one read, with no re-reading?",
-  },
-  {
-    key: "concision",
-    label: "Concision",
-    description: "Is every word load-bearing? Filler, hedging, and throat-clearing removed?",
-  },
-  {
-    key: "structure",
-    label: "Structure",
-    description: "Does it lead with the point, then support it in a logical order?",
-  },
-  {
-    key: "precision",
-    label: "Precision",
-    description: "Concrete and specific rather than abstract, vague, or jargon-laden?",
-  },
-  {
-    key: "audience",
-    label: "Audience",
-    description:
-      "Written for this reader — translates jargon into their terms and leads with what they care about (their stake, the 'so what').",
-  },
-  {
-    key: "impact",
-    label: "Impact",
-    description:
-      "Executive presence — confident, decisive, and owns a clear recommendation.",
-  },
-];
-
-export const DIMENSION_MAP: Record<DimensionKey, Dimension> = DIMENSIONS.reduce(
-  (acc, d) => {
-    acc[d.key] = d;
-    return acc;
-  },
-  {} as Record<DimensionKey, Dimension>,
-);
-
-// Dimensions evaluated from a spoken recording (the "Speak" practice mode).
-export const DELIVERY_DIMENSIONS: DeliveryDimension[] = [
-  {
-    key: "pace",
-    label: "Pace",
-    description: "Steady and unhurried, with pauses that aid emphasis — not rushed or draggy.",
-  },
-  {
-    key: "fillers",
-    label: "Filler-free",
-    description: "Few 'um', 'uh', 'like', 'sort of', or false starts breaking the flow.",
-  },
-  {
-    key: "clarity",
-    label: "Clarity",
-    description: "Easy to follow spoken — leads with the point, well-organized, not rambling.",
-  },
-  {
-    key: "pronunciation",
-    label: "Enunciation",
-    description:
-      "Words clearly articulated and easy to understand (general intelligibility, not accent).",
-  },
-];
-
-export const DELIVERY_MAP: Record<DeliveryKey, DeliveryDimension> =
-  DELIVERY_DIMENSIONS.reduce(
-    (acc, d) => {
-      acc[d.key] = d;
-      return acc;
-    },
-    {} as Record<DeliveryKey, DeliveryDimension>,
-  );
+// The rubric lives in lib/rubric.ts (client-safe, no drill content); re-export
+// for server code that already imports it from here. Client components should
+// import from "./rubric" directly to keep drill banks out of their bundle.
+export {
+  DIMENSIONS,
+  DIMENSION_MAP,
+  DELIVERY_DIMENSIONS,
+  DELIVERY_MAP,
+} from "./rubric";
 
 const RAW_MODULES: Module[] = [
   {
@@ -837,20 +785,54 @@ const RAW_MODULES: Module[] = [
   },
 ];
 
+// Profession-specific banks, appended AFTER the original (business) banks in a
+// FIXED order. Order matters: the practiced-drill bitset (lib/practiced.ts)
+// indexes drills by position, so only ever APPEND new banks — never reorder or
+// remove entries from this list.
+const PROFESSION_BANKS: Record<string, Drill[]>[] = [
+  ENGINEER_EARLY_DRILLS,
+  ENGINEER_MID_DRILLS,
+  ENGINEER_SENIOR_DRILLS,
+  DOCTOR_EARLY_DRILLS,
+  DOCTOR_MID_DRILLS,
+  DOCTOR_SENIOR_DRILLS,
+  LAWYER_EARLY_DRILLS,
+  LAWYER_MID_DRILLS,
+  LAWYER_SENIOR_DRILLS,
+  FINANCE_EARLY_DRILLS,
+  FINANCE_MID_DRILLS,
+  FINANCE_SENIOR_DRILLS,
+  SALES_EARLY_DRILLS,
+  SALES_MID_DRILLS,
+  SALES_SENIOR_DRILLS,
+  CONSULTANT_EARLY_DRILLS,
+  CONSULTANT_MID_DRILLS,
+  CONSULTANT_SENIOR_DRILLS,
+  OPERATOR_EARLY_DRILLS,
+  OPERATOR_MID_DRILLS,
+  OPERATOR_SENIOR_DRILLS,
+];
+
 // Number modules by their position so inserting/reordering never desyncs, and
-// append the tier-unlockable drills (lib/drills-extra.ts) after each module's
-// hand-curated drills, taking each to 25 total.
+// append the tier-unlockable drills after each module's hand-curated drills:
+// first the original business-profession banks (senior + early + mid), then
+// each profession bank in the fixed order above.
 export const MODULES: Module[] = RAW_MODULES.map((m, i) => ({
   ...m,
   number: i + 1,
-  // Senior drills (the original library) + the Early/Mid level pools. Any drill
-  // without an explicit level is treated as senior.
+  // Any drill without an explicit level is senior; without an explicit
+  // profession it belongs to the original general "business" library.
   drills: [
     ...m.drills,
     ...(EXTRA_DRILLS[m.slug] ?? []),
     ...(EARLY_DRILLS[m.slug] ?? []),
     ...(MID_DRILLS[m.slug] ?? []),
-  ].map((d) => ({ ...d, level: d.level ?? "senior" })),
+    ...PROFESSION_BANKS.flatMap((bank) => bank[m.slug] ?? []),
+  ].map((d) => ({
+    ...d,
+    level: d.level ?? "senior",
+    profession: d.profession ?? "business",
+  })),
 }));
 
 export const MODULE_MAP: Record<string, Module> = MODULES.reduce(
@@ -879,17 +861,22 @@ export function getDrill(moduleSlug: string, drillId: string) {
   const drill = module.drills.find((d) => d.id === drillId);
   if (!drill) return null;
   const level = drill.level ?? "senior";
-  // Position within this drill's level group — each tier unlocks the first N
-  // drills per level, per module.
+  const profession: Profession = drill.profession ?? "business";
+  // Position within this drill's (level, profession) group — each tier unlocks
+  // the first N drills per level per profession, per module.
   const levelIndex = module.drills
-    .filter((d) => (d.level ?? "senior") === level)
+    .filter(
+      (d) =>
+        (d.level ?? "senior") === level &&
+        (d.profession ?? "business") === profession,
+    )
     .findIndex((d) => d.id === drillId);
-  return { module, drill, level, levelIndex };
+  return { module, drill, level, profession, levelIndex };
 }
 
-/** Drills in a module for a given level, in unlock order. */
-export function drillsForLevel(moduleSlug: string, level: string) {
+/** Drills in a module for a given profession, in unlock order (all levels). */
+export function drillsForProfession(moduleSlug: string, profession: Profession) {
   const module = MODULE_MAP[moduleSlug];
   if (!module) return [];
-  return module.drills.filter((d) => (d.level ?? "senior") === level);
+  return module.drills.filter((d) => (d.profession ?? "business") === profession);
 }

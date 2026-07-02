@@ -2,6 +2,7 @@ import { auth, clerkClient } from "@clerk/nextjs/server";
 import { CLERK_ENABLED } from "./clerk-config";
 import { FREE_TIER, TIER_MAP, tierById, type Tier, type TierId } from "./tiers";
 import { DEFAULT_LEVEL, LEVEL_IDS, parseLevels, readLevel, type Level } from "./levels";
+import { DEFAULT_PROFESSION, readProfession, type Profession } from "./professions";
 
 // Server-authoritative subscription entitlements. The user's plan lives in Clerk
 // `privateMetadata.subscription` (server-only, never trusted from the client)
@@ -160,10 +161,13 @@ export interface Entitlements {
   /** The user's chosen career level (preference) — for free users this is the
    *  single level the sampler is locked to. */
   level: Level;
+  /** The user's chosen profession (free preference, switchable anytime — it
+   *  selects which drill bank they see; it is never priced or purchased). */
+  profession: Profession;
   comp: boolean;
 }
 
-/** Tier + purchased levels + chosen level + comp flag in one Clerk read. */
+/** Tier + purchased levels + chosen level/profession + comp flag in one Clerk read. */
 export async function getUserEntitlements(userId: string): Promise<Entitlements> {
   const client = await clerkClient();
   const user = await client.users.getUser(userId);
@@ -171,6 +175,7 @@ export async function getUserEntitlements(userId: string): Promise<Entitlements>
     tier: tierForUser(user),
     levels: levelsForUser(user),
     level: readLevel(user.unsafeMetadata),
+    profession: readProfession(user.unsafeMetadata),
     comp: isCompUser(user),
   };
 }
@@ -180,7 +185,13 @@ export async function getUserEntitlements(userId: string): Promise<Entitlements>
  * no one is signed in — gating then shows only the Free sampler.
  */
 export async function getCurrentEntitlements(): Promise<Entitlements> {
-  const guest = { tier: FREE_TIER, levels: [], level: DEFAULT_LEVEL, comp: false };
+  const guest = {
+    tier: FREE_TIER,
+    levels: [] as Level[],
+    level: DEFAULT_LEVEL,
+    profession: DEFAULT_PROFESSION,
+    comp: false,
+  };
   if (!CLERK_ENABLED) return guest;
   const { userId } = await auth();
   if (!userId) return guest;
