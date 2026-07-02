@@ -42,8 +42,9 @@ home-screen icon launches full-screen with no browser chrome.
 
 ## What's inside
 
-- **10 modules**, each with a tight lesson, before/after examples, and two AI-coached
-  practice drills:
+- **10 modules**, each with a tight lesson, before/after examples, and a deep bank of
+  AI-coached practice drills written for **three career levels** — Early career, Mid
+  career (manager), and Executive — 25 drills per level per module:
   1. Lead With the Point (BLUF)
   2. Start With the Audience (curse of knowledge)
   3. Structure That Carries (Pyramid, SCQA, PREP)
@@ -69,6 +70,16 @@ home-screen icon launches full-screen with no browser chrome.
 - **My progress dashboard** (`/progress`, signed-in) — each user sees their completed
   drills, attempts, and best scores (written = overall; spoken = average delivery), with
   per-module breakdown and summary stats.
+
+- **Subscription plans** (`/pricing`, optional — needs Stripe): Free unlocks a sampler
+  (1 drill each in the first 3 modules); Starter / Plus / Pro / Max ($4.99–$49.99 per
+  career level, per year) unlock 3/6/12/25 drills per module for each level purchased.
+  Plans are annual, upgradable in place (prorated), and cancelable at period end
+  (non-refundable). Without `STRIPE_SECRET_KEY` the app runs free-only.
+
+- **Free guides** (`/guides`) — public, SEO-indexed articles on the core principles
+  (being articulate, BLUF, cutting filler words), cross-linked into the course, with
+  sitemap/robots/JSON-LD structured data built in.
 
 > Pronunciation note: spoken feedback judges **general intelligibility and enunciation**,
 > not phoneme-level accuracy, and never penalizes an accent. True pronunciation scoring
@@ -102,7 +113,7 @@ code changes:
 
 If both are set, Gemini wins (free first). Force a choice with
 `ARTICULATE_PROVIDER=gemini` or `ARTICULATE_PROVIDER=claude`. Override models with
-`GEMINI_MODEL` (default `gemini-2.0-flash`) or `ANTHROPIC_MODEL` (default
+`GEMINI_MODEL` (default `gemini-2.5-flash-lite`) or `ANTHROPIC_MODEL` (default
 `claude-opus-4-8`).
 
 ## How the AI coaching works
@@ -173,21 +184,38 @@ Open <http://localhost:3000>.
 ```
 middleware.ts                # Clerk auth middleware (attaches session to requests)
 app/
-  layout.tsx                 # Shell, header/footer, ClerkProvider + auth controls
-  page.tsx                   # Course overview / landing
+  layout.tsx                 # Shell, header/footer, ClerkProvider, site-wide SEO metadata
+  page.tsx                   # Course overview / landing (+ FAQ, JSON-LD)
   globals.css                # Tailwind + theme
-  modules/[slug]/page.tsx    # Lesson + examples + drills for one module
-  progress/page.tsx          # Per-user "my progress" dashboard (signed-in)
-  api/feedback/route.ts      # POST: grades a written response via the active provider
+  sitemap.ts / robots.ts     # /sitemap.xml and /robots.txt for search engines
+  modules/[slug]/page.tsx    # Lesson + examples + tier/level-gated drills for one module
+  guides/                    # Public editorial guides hub (index + article pages)
+  pricing/page.tsx           # Plans, per-level checkout, upgrade/cancel/resume UI
+  progress/page.tsx          # Per-user "my progress" dashboard (signed-in, noindex)
+  api/feedback/route.ts      # POST: grades a written response (gated + metered)
   api/speak/route.ts         # POST: grades a spoken recording (Gemini audio)
+  api/usage/route.ts         # GET: the signed-in user's plan + AI-allowance summary
+  api/billing/               # Stripe: checkout, webhook, sync, preview, cancel
+  api/clerk/webhook/route.ts # Cancels Stripe subs when a Clerk account is deleted
 components/
   DrillPractice.tsx          # Write/Speak toggle + written feedback panel
+  ModuleDrills.tsx           # Level switcher + per-tier drill gating on a module
   SpeakPractice.tsx          # Record audio → spoken delivery feedback
   SpeakButton.tsx            # Text-to-speech "Listen" button (Web Speech API)
   ScoreBar.tsx               # Per-dimension score bar
+  JsonLd.tsx                 # JSON-LD structured-data emitter
 lib/
   types.ts                   # Shared domain + feedback types
-  course.ts                  # All course content (modules, drills, rubrics)
+  course.ts                  # Course content assembly (modules + merged drill banks)
+  drills-extra/early/mid.ts  # Drill banks per career level (25 per module each)
+  levels.ts                  # Career levels (early / mid / senior) + helpers
+  tiers.ts                   # Subscription tiers, prices, per-module drill counts
+  entitlements.ts            # Server-authoritative tier/level resolution + comp accounts
+  limits.ts                  # Per-user annual AI-spend allowance (metering + gate)
+  practiced.ts               # Server-side practiced-drill bitset
+  stripe.ts / billing.ts     # Stripe client + subscription→entitlement mapping
+  guides.ts                  # Editorial guide content (/guides)
+  site.ts                    # Canonical site URL + support email
   prompt.ts                  # Provider-agnostic prompts (written + spoken)
   feedback.ts                # Provider dispatch + score normalization
   providers/
@@ -197,12 +225,18 @@ lib/
 
 ## Extending the course
 
-Course content is plain data in `lib/course.ts`. To add a module, append a `Module`
-object to `MODULES`; to add a drill, add a `Drill` to a module's `drills` array. The
-rubric, prompt, and feedback UI all adapt automatically — no other changes needed.
+Course content is plain data. To add a module, append a `Module` object to `MODULES` in
+`lib/course.ts`. To add a drill, append a `Drill` to the right career-level bank —
+`lib/drills-extra.ts` (senior), `lib/drills-early.ts`, or `lib/drills-mid.ts` — keyed by
+module slug; order within an array is the tier unlock order, so **append** (don't
+reorder or rename ids — the practiced-drill bitset indexes by position). The rubric,
+prompt, gating, and feedback UI all adapt automatically. Guides are the same idea in
+`lib/guides.ts`.
 
 ## Notes
 
 - Feedback is AI-generated practice, not authoritative judgment. Treat the rewrite as a
   worked example, not the only correct answer.
-- No data is persisted: responses are sent to the API for grading and not stored.
+- Drill responses and recordings are sent to the AI provider for grading and are not
+  stored. What *is* persisted (in Clerk user metadata): practice progress and scores,
+  the subscription plan, the practiced-drill record, and the AI-allowance meter.

@@ -21,7 +21,10 @@ fast-forward into) `main` and continue there. (The older
 
 **Articulate** — an articulation training course with AI coaching, built with Next.js
 (App Router) + TypeScript + Tailwind. Course content (modules, drills, rubric dimensions)
-lives in `lib/course.ts`; the AI feedback contract is in `lib/types.ts`.
+lives in `lib/course.ts`; the AI feedback contract is in `lib/types.ts`. Public SEO
+content (the `/guides` articles) lives in `lib/guides.ts`; sitemap/robots/JSON-LD are in
+`app/sitemap.ts`, `app/robots.ts`, and `components/JsonLd.tsx`, with the canonical origin
+in `lib/site.ts` (`SITE_URL`, default `https://iarticulate.ca`).
 
 ## Deployment notes
 
@@ -36,38 +39,52 @@ lives in `lib/course.ts`; the AI feedback contract is in `lib/types.ts`.
 - **AI coach.** Default model is `gemini-2.5-flash-lite` (override with `GEMINI_MODEL`);
   the provider is switchable to Claude via `ANTHROPIC_API_KEY`. Gemini billing must be
   enabled on the Google Cloud project (free tier is effectively unavailable).
-- **Subscription tiers** (`lib/tiers.ts`): Free / Starter / Plus / Pro / Max unlock
-  10 / 30 / 60 / 120 / 250 **total** drills (spread evenly = 1/3/6/12/25 per module, via
-  `drillsPerModule`). Each module hand-curates 2 drills; `lib/drills-extra.ts` fills the
-  rest to 25, merged in `course.ts`. The active plan lives in Clerk `privateMetadata`
+- **Subscription tiers** (`lib/tiers.ts`): Starter / Plus / Pro / Max unlock
+  30 / 60 / 120 / 250 **total** drills *per purchased career level* (spread evenly =
+  3/6/12/25 per module, via `drillsPerModule`). Free is a sampler: 1 drill per module in
+  the **first 3 modules only** (`FREE_MODULE_LIMIT`), locked to the user's chosen level.
+  **Pricing is per career level** (`lib/levels.ts`: early / mid / senior): the tier price
+  is billed once per level bought (Stripe quantity = level count), and only purchased
+  levels unlock the tier's drill count — other levels fall back to the Free sampler.
+  Each module hand-curates 2 senior drills; `lib/drills-extra.ts` (senior),
+  `lib/drills-early.ts`, and `lib/drills-mid.ts` fill each level to 25 per module, merged
+  in `course.ts`. The active plan (tier + levels) lives in Clerk `privateMetadata`
   (server-authoritative, written by the Stripe webhook); `lib/entitlements.ts` resolves
-  the *effective* tier (reverts to Free when a paid plan lapses). Drill access is gated in
-  the module page UI **and** enforced server-side in the feedback/speak routes — never
-  trust the client.
+  the *effective* tier/levels (reverts to Free when a paid plan lapses, and fails closed
+  if a paid sub has no recorded levels). Drill access is gated in the module page UI
+  **and** enforced server-side in the feedback/speak routes — never trust the client.
 - **Comp accounts** (`lib/entitlements.ts`): emails/usernames in `COMP_USER_EMAILS`
   (server-only env, comma-separated) resolve to **Max tier with the AI cap bypassed** —
   full access, no subscription. Checked in `tierForUser`/`isCompUser`; kept in env so the
   addresses stay private even though the repo is public.
-- **Payments** (`lib/stripe.ts`, `app/api/billing/*`): Stripe Checkout for annual
-  subscriptions (`/checkout`), webhook sync (`/webhook`, raw-body signature verify), and
-  billing portal (`/portal`). Optional like Clerk — unset `STRIPE_SECRET_KEY` and the app
-  still builds/runs (checkout returns 503). Needs the secret key + 4 annual price IDs +
-  webhook secret (see `.env.example`).
-- **Cancellation w/ usage refund** (`app/api/billing/cancel`): cancel is a custom flow
-  (not Stripe's portal cancel), refund = annual price − AI spend − (drills completed /
-  tier total) × price, floored at 0. POST previews the breakdown; `{confirm:true}` issues
-  the Stripe partial refund, cancels the sub, reverts to Free. Pricing page shows the
-  preview before confirming. (Configure the Stripe billing portal to **disable**
-  cancellation so the refund policy can't be bypassed.)
+- **Payments** (`lib/stripe.ts`, `lib/billing.ts`, `app/api/billing/*`): Stripe Checkout
+  for annual subscriptions (`/checkout` — also does in-place, prorated **upgrades** for
+  existing subscribers; downgrades/level swaps require cancel + re-subscribe), webhook
+  sync (`/webhook`, raw-body signature verify), post-checkout/recovery reconcile
+  (`/sync`, pull-based, owner-verified), and upgrade-charge preview (`/preview`).
+  Optional like Clerk — unset `STRIPE_SECRET_KEY` and the app still builds/runs
+  (checkout returns 503). Needs the secret key + 4 annual price IDs + webhook secret
+  (see `.env.example`). A Clerk webhook (`app/api/clerk/webhook`, needs
+  `CLERK_WEBHOOK_SIGNING_SECRET`) cancels a user's Stripe subscriptions when their
+  account is deleted.
+- **Cancellation — NO refund** (`app/api/billing/cancel`): annual plans are
+  non-refundable. POST `{}` previews (tier, level count, access-until date);
+  `{confirm:true}` schedules `cancel_at_period_end` — the user keeps full access until
+  the period ends, then reverts to Free; `{resume:true}` undoes a scheduled cancellation.
+  The pricing page drives all three. (Configure the Stripe billing portal to **disable**
+  cancellation so this flow isn't bypassed.)
 - **Brand**: user-facing name is **iArticulate™** (header wordmark carries the ™). The
   repo/package/Vercel project keep the technical id `articulate`.
 - **Per-user AI cost guardrails** (`lib/limits.ts`): each signed-in user gets an annual
-  AI-feedback allowance that **renews every 365 days**, sized by their tier
-  (`tier.aiBudgetUsd` = **1/3 of the annual price**; Free = $1 trial; see
-  `aiBudgetForPrice` in `lib/tiers.ts`). Metered from real token usage, stored in Clerk
-  `privateMetadata` (server-only, tamper-proof), enforced in the feedback/speak routes,
-  surfaced by the header `AllowanceMeter` via `/api/usage`. If you change model/provider,
-  update the per-token price in `lib/limits.ts`.
+  AI-feedback allowance that **renews every 365 days** (window length overridable via
+  `USER_ALLOWANCE_DAYS`), sized by their tier × levels purchased (`tier.aiBudgetUsd` =
+  **1/3 of the annual price** per level; Free = $1 trial; see `aiBudgetForPrice` in
+  `lib/tiers.ts`). Metered from real token usage, stored in Clerk `privateMetadata`
+  (server-only, tamper-proof), enforced in the feedback/speak routes, and read by the
+  client through `/api/usage` (used by the pricing page for plan/level state; there is
+  currently no header meter component). `recordSpend` also marks the drill practiced in
+  the server-side bitset (`lib/practiced.ts`) in the same metadata write. If you change
+  model/provider, update the per-token price in `lib/limits.ts`.
 
 ## Verifying changes
 
