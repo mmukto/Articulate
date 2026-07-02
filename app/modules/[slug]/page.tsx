@@ -172,8 +172,9 @@ export default async function ModulePage({ params }: { params: { slug: string } 
         <div>
           <h2 className="font-serif text-2xl font-semibold tracking-tight">Practice</h2>
           <p className="mt-1 text-ink-soft">
-            Write a response, then get coached. Revise and re-score as many times as you
-            like — iteration is the point.
+            Speak your answer aloud — or write it — then get coached. Revise and re-score
+            as many times as you like — iteration is the point. Every drill trains both
+            your spoken and written articulation.
           </p>
         </div>
         <SignedIn>
@@ -189,7 +190,7 @@ export default async function ModulePage({ params }: { params: { slug: string } 
           <div className="rounded-xl border border-ink/10 bg-white/60 p-8 text-center">
             <p className="font-serif text-lg">Sign in to practice and get AI feedback.</p>
             <p className="mx-auto mt-1 max-w-md text-sm text-ink-mute">
-              Create a free account to write or speak your answers, get scored against the
+              Create a free account to speak or write your answers, get scored against the
               rubric, and track your progress across the course.
             </p>
             <div className="mt-5 flex justify-center gap-3">

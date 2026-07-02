@@ -25,7 +25,9 @@ export function DrillPractice({
   moduleSlug: string;
   drill: Drill;
 }) {
-  const [mode, setMode] = useState<Mode>("write");
+  // Speak leads: spoken practice is the flagship mode, so it's first and the
+  // default (highlighted). Writing is one tap away.
+  const [mode, setMode] = useState<Mode>("speak");
 
   return (
     <div className="rounded-xl border border-ink/10 bg-white/60 p-6">
@@ -73,7 +75,7 @@ export function DrillPractice({
 
       {/* Mode toggle */}
       <div className="mt-4 inline-flex rounded-lg border border-ink/15 bg-paper p-0.5 text-sm">
-        {(["write", "speak"] as Mode[]).map((m) => (
+        {(["speak", "write"] as Mode[]).map((m) => (
           <button
             key={m}
             onClick={() => setMode(m)}

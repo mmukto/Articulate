@@ -9,7 +9,7 @@ import "./globals.css";
 
 const TITLE = "iArticulate — Executive Communication & Clarity";
 const DESCRIPTION =
-  "An articulation training course with AI coaching. Practice executive communication and get specific, rubric-based feedback on clarity, concision, structure, precision, and presence.";
+  "An articulation training course with AI coaching. Speak or write your answers to realistic drills and get rubric-based feedback — train both spoken and written executive communication.";
 
 export const metadata: Metadata = {
   // metadataBase makes all relative Open Graph / canonical URLs resolve to

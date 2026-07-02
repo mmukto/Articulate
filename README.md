@@ -60,7 +60,8 @@ home-screen icon launches full-screen with no browser chrome.
 - **AI feedback** for each drill: an overall score, per-dimension scores with comments,
   specific strengths and fixes, a stronger rewrite of *your own words*, and a suggested
   next micro-drill.
-- **Voice practice** on every drill — a Write / Speak toggle:
+- **Voice practice** on every drill — a Speak / Write toggle (Speak is first and the
+  default, so every drill trains both spoken and written articulation):
   - **Speak:** record your answer aloud (up to 90s); the coach transcribes it and scores
     your delivery — pace, filler words, clarity, and enunciation — and gives you a
     stronger spoken version. *(Requires a Gemini key — it's the multimodal one.)*
@@ -198,7 +199,7 @@ app/
   api/billing/               # Stripe: checkout, webhook, sync, preview, cancel
   api/clerk/webhook/route.ts # Cancels Stripe subs when a Clerk account is deleted
 components/
-  DrillPractice.tsx          # Write/Speak toggle + written feedback panel
+  DrillPractice.tsx          # Speak/Write toggle (speak-first) + feedback panels
   ModuleDrills.tsx           # Level switcher + per-tier drill gating on a module
   SpeakPractice.tsx          # Record audio → spoken delivery feedback
   SpeakButton.tsx            # Text-to-speech "Listen" button (Web Speech API)

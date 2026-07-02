@@ -11,7 +11,7 @@ import { SITE_URL } from "@/lib/site";
 const HOME_FAQ = [
   {
     q: "What is iArticulate?",
-    a: "iArticulate is an articulation training course with an AI coach. You read short lessons on executive communication, respond to realistic drills, and get scored against a clarity rubric with a stronger rewrite of your own words.",
+    a: "iArticulate is an articulation training course with an AI coach. You read short lessons on executive communication, then answer realistic drills by speaking aloud or writing, and get scored against a clarity rubric with a stronger rewrite of your own words. It trains both spoken and written articulation.",
   },
   {
     q: "Can you actually learn to be more articulate?",
@@ -19,7 +19,7 @@ const HOME_FAQ = [
   },
   {
     q: "How does the AI coaching work?",
-    a: "You write or speak an answer to a realistic scenario. The AI scores it on six dimensions — clarity, concision, structure, precision, audience, and impact — points out specific fixes, and rewrites your answer stronger. You revise and re-score as many times as you like.",
+    a: "You speak — or write — an answer to a realistic scenario. Spoken answers are transcribed and coached on delivery: pace, filler words, clarity, and enunciation, with a stronger version you can hear read aloud. Written answers are scored on six dimensions: clarity, concision, structure, precision, audience, and impact. Either way you get specific fixes and a stronger rewrite, and can revise and re-score as many times as you like.",
   },
   {
     q: "Is there a free version?",
@@ -80,9 +80,14 @@ export default function HomePage() {
           <span className="italic text-accent">clearly</span>, the first time.
         </h1>
         <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink-soft">
-          Short lessons, then realistic drills — and an AI coach that scores every
-          answer against a sharp rubric, rewrites it stronger, and shows you exactly
-          what to fix.
+          Short lessons, then realistic drills you{" "}
+          <span className="font-medium text-ink">speak aloud</span> — or write. An AI
+          coach scores every answer against a sharp rubric, rewrites it stronger, and
+          reads the stronger version aloud so you can hear how it should sound. Train{" "}
+          <span className="font-medium text-ink">
+            both your spoken and written articulation
+          </span>{" "}
+          in one place.
         </p>
         <div className="mt-7 flex flex-wrap items-center gap-3">
           <Link
@@ -191,13 +196,13 @@ export default function HomePage() {
             },
             {
               n: "2",
-              t: "Write your answer",
-              b: "Respond to a realistic scenario — a status update, an ask, a tough reply.",
+              t: "Speak — or write — your answer",
+              b: "Record yourself answering a realistic scenario and get coached on pace, fillers, and delivery — or type it out instead.",
             },
             {
               n: "3",
               t: "Get coached",
-              b: "Scores per dimension, specific fixes, and a stronger rewrite of your own words.",
+              b: "Scores per dimension, specific fixes, a stronger rewrite of your own words — and a 'Hear it' button that reads it aloud.",
             },
           ].map((s) => (
             <div key={s.n} className="rounded-lg border border-ink/10 bg-white/40 p-5">
