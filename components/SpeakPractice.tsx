@@ -12,8 +12,24 @@ import { DELIVERY_MAP } from "@/lib/rubric";
 import { useProgress } from "@/lib/progress";
 import { ScoreBar } from "./ScoreBar";
 import { SpeakButton } from "./SpeakButton";
+import { ConfettiBurst, CELEBRATION_SCORE } from "./Confetti";
 
 const MAX_SECONDS = 90;
+
+/** Overall spoken score: the average of the delivery dimensions, rounded —
+ *  the same number progress tracking records for a spoken attempt. */
+function overallOf(fb: SpokenFeedback): number {
+  const scores = fb.delivery.map((d) => d.score);
+  return scores.length
+    ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+    : 0;
+}
+
+function overallColor(score: number): string {
+  if (score >= 80) return "text-emerald-700";
+  if (score >= 60) return "text-amber-600";
+  return "text-danger";
+}
 
 function pickMimeType(): string {
   if (typeof MediaRecorder === "undefined") return "";
@@ -67,6 +83,8 @@ export const SpeakPractice = forwardRef<
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<SpokenFeedback | null>(null);
+  // Bumped on every 90+ delivery score; the changing key re-fires the confetti.
+  const [celebrate, setCelebrate] = useState(0);
   const { record } = useProgress();
 
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -194,11 +212,9 @@ export const SpeakPractice = forwardRef<
       if (!res.ok) throw new Error(data?.error || "Something went wrong.");
       const fb = data.feedback as SpokenFeedback;
       setFeedback(fb);
-      const scores = fb.delivery.map((d) => d.score);
-      const avg = scores.length
-        ? scores.reduce((a, b) => a + b, 0) / scores.length
-        : 0;
-      record(moduleSlug, drill.id, avg);
+      const overall = overallOf(fb);
+      if (overall >= CELEBRATION_SCORE) setCelebrate((c) => c + 1);
+      record(moduleSlug, drill.id, overall);
       // Nudge the allowance indicator to refresh now that spend was recorded.
       window.dispatchEvent(new Event("articulate:usage"));
     } catch (err) {
@@ -257,14 +273,27 @@ export const SpeakPractice = forwardRef<
       ) : null}
 
       {feedback ? <SpokenFeedbackPanel feedback={feedback} /> : null}
+      {celebrate > 0 ? <ConfettiBurst key={celebrate} /> : null}
     </div>
   );
 });
 
 function SpokenFeedbackPanel({ feedback }: { feedback: SpokenFeedback }) {
+  const overall = overallOf(feedback);
   return (
     <div className="mt-6 space-y-6 border-t border-ink/10 pt-6">
-      <p className="font-serif text-lg leading-snug">{feedback.headline}</p>
+      {/* Overall delivery + headline, mirroring the written feedback panel. */}
+      <div className="flex items-start gap-5">
+        <div className="text-center">
+          <div
+            className={`font-serif text-4xl font-bold tabular-nums ${overallColor(overall)}`}
+          >
+            {overall}
+          </div>
+          <div className="text-xs uppercase tracking-widest text-ink-mute">overall</div>
+        </div>
+        <p className="flex-1 font-serif text-lg leading-snug">{feedback.headline}</p>
+      </div>
 
       {feedback.delivery.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2">

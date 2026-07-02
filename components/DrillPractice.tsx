@@ -9,6 +9,7 @@ import { ScoreBar } from "./ScoreBar";
 import { SpeakButton } from "./SpeakButton";
 import { SpeakPractice, type SpeakPracticeHandle } from "./SpeakPractice";
 import { PracticedBadge } from "./PracticedBadge";
+import { ConfettiBurst, CELEBRATION_SCORE } from "./Confetti";
 
 type Mode = "write" | "speak";
 
@@ -153,6 +154,8 @@ function WritePractice({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
+  // Bumped on every 90+ grade; the changing key re-fires the confetti.
+  const [celebrate, setCelebrate] = useState(0);
 
   const wordCount = response.trim() ? response.trim().split(/\s+/).length : 0;
 
@@ -171,6 +174,7 @@ function WritePractice({
       if (!res.ok) throw new Error(data?.error || "Something went wrong.");
       const fb = data.feedback as Feedback;
       setFeedback(fb);
+      if (fb.overall >= CELEBRATION_SCORE) setCelebrate((c) => c + 1);
       record(moduleSlug, drill.id, fb.overall);
       // Nudge the allowance indicator to refresh now that spend was recorded.
       window.dispatchEvent(new Event("articulate:usage"));
@@ -231,6 +235,7 @@ function WritePractice({
       ) : null}
 
       {feedback ? <FeedbackPanel feedback={feedback} /> : null}
+      {celebrate > 0 ? <ConfettiBurst key={celebrate} /> : null}
     </div>
   );
 }
