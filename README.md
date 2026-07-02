@@ -44,11 +44,12 @@ home-screen icon launches full-screen with no browser chrome.
 
 - **10 modules**, each with a tight lesson, before/after examples, and a deep bank of
   AI-coached practice drills written for **three career levels** — Early career, Mid
-  career (manager), and Executive — and for **eight professions** — general business
+  career (manager), and Executive — and for **nine professions** — general business
   (default), software engineering, medicine, law, finance, sales & marketing,
-  consulting, and operations — 25 drills per level per profession per module. The
-  profession is a free preference (switch anytime); scenarios and AI coaching are
-  calibrated to it:
+  consulting, operations, and student — 25 drills per level per profession per module.
+  The profession is a free preference (switch anytime); scenarios and AI coaching are
+  calibrated to it. For students the three levels read **High school / Undergraduate /
+  Postgraduate** (same level IDs and pricing, profession-specific naming):
   1. Lead With the Point (BLUF)
   2. Start With the Audience (curse of knowledge)
   3. Structure That Carries (Pyramid, SCQA, PREP)
@@ -215,7 +216,7 @@ lib/
   rubric.ts                  # Scoring dimensions (client-safe, no drill content)
   drills-extra/early/mid.ts  # Business-profession drill banks (25 per module per level)
   drills-<prof>-<level>.ts   # Profession drill banks (engineer/doctor/lawyer/finance/
-                             #   sales/consultant/operator × early/mid/senior)
+                             #   sales/consultant/operator/student × early/mid/senior)
   levels.ts                  # Career levels (early / mid / senior) + helpers
   professions.ts             # Professions (free preference) + helpers
   tiers.ts                   # Subscription tiers, prices, per-module drill counts

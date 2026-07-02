@@ -2,10 +2,20 @@
 
 import { useState } from "react";
 import { LEVELS } from "@/lib/levels";
+import {
+  DEFAULT_PROFESSION,
+  levelInfoFor,
+  type Profession,
+} from "@/lib/professions";
 
 // A small "Which level am I?" disclosure that explains the three levels, to help
 // a user pick. Reused under the level switcher on modules and the progress page.
-export function LevelHelp() {
+// Level names/blurbs adapt to the profession (Student → school stages).
+export function LevelHelp({
+  profession = DEFAULT_PROFESSION,
+}: {
+  profession?: Profession;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <div className="mt-2">
@@ -23,11 +33,14 @@ export function LevelHelp() {
             switch anytime.
           </p>
           <ul className="space-y-1.5">
-            {LEVELS.map((l) => (
-              <li key={l.id}>
-                <span className="font-medium text-ink">{l.name}:</span> {l.blurb}
-              </li>
-            ))}
+            {LEVELS.map((l) => {
+              const info = levelInfoFor(profession, l.id);
+              return (
+                <li key={l.id}>
+                  <span className="font-medium text-ink">{info.name}:</span> {info.blurb}
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : null}

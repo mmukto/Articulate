@@ -6,7 +6,8 @@ import { CLERK_ENABLED } from "@/lib/clerk-config";
 import { checkAccess, recordSpend, estimateCostUsd, type AccessGate } from "@/lib/limits";
 import { getUserEntitlements } from "@/lib/entitlements";
 import { drillsPerModule, FREE_DRILLS_PER_MODULE, FREE_MODULE_LIMIT } from "@/lib/tiers";
-import { LEVEL_MAP, type Level } from "@/lib/levels";
+import type { Level } from "@/lib/levels";
+import { levelInfoFor } from "@/lib/professions";
 
 // Feedback grading can take a few seconds with adaptive thinking — give it room.
 export const maxDuration = 60;
@@ -97,7 +98,7 @@ export async function POST(req: NextRequest) {
             ? `Free practice covers the first ${FREE_MODULE_LIMIT} modules. Subscribe to unlock the full course.`
             : found.level !== ent.level
               ? "Free practice is locked to your chosen level. Subscribe to unlock other levels."
-              : `Subscribe to unlock all drills at the ${LEVEL_MAP[found.level].name} level.`;
+              : `Subscribe to unlock all drills at the ${levelInfoFor(found.profession, found.level).name} level.`;
         return NextResponse.json({ error }, { status: 403 });
       }
     }

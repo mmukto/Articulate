@@ -8,6 +8,7 @@ import {
   tierForUser,
 } from "./entitlements";
 import { readLevel, type Level } from "./levels";
+import { readProfession, type Profession } from "./professions";
 import { markPracticed } from "./practiced";
 
 // Per-user AI-feedback guardrails.
@@ -171,6 +172,8 @@ export interface UsageSummary {
   levelCount: number;
   /** The user's currently chosen career level (preference, not entitlement). */
   currentLevel: Level;
+  /** The user's chosen profession (free preference; drives signup/pricing UI). */
+  currentProfession: Profession;
   /** True if the paid plan is set to cancel at period end (access until accessUntil). */
   cancelAtPeriodEnd: boolean;
   /** Epoch ms the paid access ends (period end), when known. */
@@ -205,6 +208,7 @@ export async function getUsageSummary(userId: string): Promise<UsageSummary> {
     levels,
     levelCount: levels.length,
     currentLevel: readLevel(user.unsafeMetadata),
+    currentProfession: readProfession(user.unsafeMetadata),
     cancelAtPeriodEnd: subscription?.cancelAtPeriodEnd === true,
     accessUntil: subscription?.expiresAt ?? null,
     spentUsd: round6(spentUsd),

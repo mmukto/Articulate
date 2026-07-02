@@ -7,6 +7,8 @@
 // user can switch anytime (stored in Clerk unsafeMetadata, like the level).
 // "business" is the default and maps to the original general drill library.
 
+import { LEVEL_MAP, type Level } from "./levels";
+
 export type Profession =
   | "business"
   | "engineer"
@@ -15,7 +17,19 @@ export type Profession =
   | "finance"
   | "sales"
   | "consultant"
-  | "operator";
+  | "operator"
+  | "student";
+
+/** Per-profession override of how a career level is named and coached. The
+ *  level IDs (early/mid/senior) — and therefore pricing — never change; only
+ *  the display name, blurb, and coaching persona do (e.g. the Student
+ *  profession's levels read High school / Undergraduate / Postgraduate). */
+export interface ProfessionLevelInfo {
+  name: string;
+  blurb: string;
+  /** One line the AI coach uses to calibrate feedback to this stage. */
+  coachNote: string;
+}
 
 export interface ProfessionInfo {
   id: Profession;
@@ -23,6 +37,9 @@ export interface ProfessionInfo {
   blurb: string;
   /** One line the AI coach uses to calibrate feedback to this profession. */
   coachNote: string;
+  /** Optional per-level overrides (name/blurb/coachNote). Levels without an
+   *  override fall back to the generic career-level info in lib/levels.ts. */
+  levelInfo?: Partial<Record<Level, ProfessionLevelInfo>>;
 }
 
 export const PROFESSIONS: ProfessionInfo[] = [
@@ -82,6 +99,35 @@ export const PROFESSIONS: ProfessionInfo[] = [
     coachNote:
       "an operations professional. Their world is running the business day-to-day — shift handoffs, process changes, supply chain and vendor coordination, KPI reviews, and operational incidents.",
   },
+  {
+    id: "student",
+    name: "Student",
+    blurb: "School and university — class, applications, research, first jobs.",
+    coachNote:
+      "a student. Their communication contexts are academic and early-professional — classes, applications, group work, research, and teachers/professors — not corporate. Never assume workplace seniority.",
+    // Student "levels" are school stages, not career stages. Level IDs (and
+    // pricing) stay early/mid/senior; only the labels and personas change.
+    levelInfo: {
+      early: {
+        name: "High school",
+        blurb: "Class discussions, presentations, essays, applications, clubs.",
+        coachNote:
+          "a high school student. Pitch feedback to their world — class discussions and presentations, essays and college applications, emails to teachers, and speaking up in clubs and teams. Do NOT assume any workplace context.",
+      },
+      mid: {
+        name: "Undergraduate",
+        blurb: "Seminars, group projects, professor emails, internships, interviews.",
+        coachNote:
+          "an undergraduate university student. Pitch feedback to their world — seminars and presentations, group projects, emails to professors and advisors, internship and job applications, and interviews. Assume little to no workplace experience.",
+      },
+      senior: {
+        name: "Postgraduate",
+        blurb: "Thesis, conference talks, advisors and committees, teaching.",
+        coachNote:
+          "a postgraduate student (master's or PhD). Pitch feedback to their world — research and thesis presentations, conference talks, advisor and committee communications, teaching and TA work, and translating research for non-specialists.",
+      },
+    },
+  },
 ];
 
 export const PROFESSION_MAP: Record<Profession, ProfessionInfo> =
@@ -114,4 +160,23 @@ export function readProfession(unsafeMetadata: unknown): Profession {
 export function hasChosenProfession(unsafeMetadata: unknown): boolean {
   const p = (unsafeMetadata as { profession?: string } | undefined)?.profession;
   return !!p && p in PROFESSION_MAP;
+}
+
+/**
+ * How a career level is presented and coached for a given profession: the
+ * profession's override when it has one (Student → High school / Undergraduate
+ * / Postgraduate), else the generic career-level info. Level IDs and pricing
+ * are untouched by this — it is display + coaching only.
+ */
+export function levelInfoFor(
+  profession: Profession,
+  level: Level,
+): ProfessionLevelInfo {
+  return (
+    PROFESSION_MAP[profession].levelInfo?.[level] ?? {
+      name: LEVEL_MAP[level].name,
+      blurb: LEVEL_MAP[level].blurb,
+      coachNote: LEVEL_MAP[level].coachNote,
+    }
+  );
 }

@@ -3,9 +3,10 @@
 import { useEffect } from "react";
 import { useMaybeUser } from "./auth";
 import { hasChosenLevel, levelById } from "@/lib/levels";
+import { hasChosenProfession, professionById } from "@/lib/professions";
 
 const KEY = "iart:pendingCheckout";
-const LEVEL_KEY = "iart:pendingLevel";
+const PREFS_KEY = "iart:pendingPrefs";
 
 // Called when a signed-out user picks a paid plan, just before sign-up opens.
 // We persist the choice so it survives the whole sign-up + email-verification
@@ -75,42 +76,58 @@ export function CheckoutResume() {
   return null;
 }
 
-// Called when a signed-out user picks the FREE plan with a career level chosen,
-// just before sign-up opens. Free sign-up has no checkout step to carry the
-// choice, so we persist it and apply it once the account exists (below).
-export function stashLevel(level: string) {
+// Called when a signed-out user picks a plan on the pricing page, just before
+// sign-up opens: persists the chosen profession (always) and — for the Free
+// plan, which has no checkout step to carry it — the chosen level, so both can
+// be applied once the account exists (below).
+export function stashPrefs(prefs: { level?: string; profession?: string }) {
   try {
-    sessionStorage.setItem(LEVEL_KEY, level);
+    sessionStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
   } catch {
     /* sessionStorage unavailable — ignore */
   }
 }
 
-// Mounted app-wide inside <SignedIn>. When a free signup stashed a chosen level,
-// write it to the new account's metadata as soon as the user is authenticated —
-// so "sign up free as Executive" actually lands on Executive instead of the
-// default. Never overrides a level the user already has (picker or purchase).
+// Mounted app-wide inside <SignedIn>. When sign-up stashed a chosen level and/or
+// profession, write them to the new account's metadata as soon as the user is
+// authenticated — so "sign up as a Student, Undergraduate" actually lands there
+// instead of the defaults. Never overrides choices the account already has.
 export function LevelResume() {
   const { user } = useMaybeUser();
   useEffect(() => {
     if (!user) return;
-    let level: string | null = null;
+    let prefs: { level?: string; profession?: string } | null = null;
     try {
-      level = sessionStorage.getItem(LEVEL_KEY);
+      const raw = sessionStorage.getItem(PREFS_KEY);
+      if (!raw) return;
+      prefs = JSON.parse(raw);
     } catch {
       return;
     }
-    if (!level) return;
     // Consume once so a later visit can't re-apply a stale choice.
     try {
-      sessionStorage.removeItem(LEVEL_KEY);
+      sessionStorage.removeItem(PREFS_KEY);
     } catch {
       /* ignore */
     }
-    if (levelById(level) !== level) return; // ignore invalid ids
-    if (hasChosenLevel(user.unsafeMetadata)) return; // don't override an existing choice
+    if (!prefs) return;
+
+    const patch: Record<string, unknown> = {};
+    const level = prefs.level;
+    if (level && levelById(level) === level && !hasChosenLevel(user.unsafeMetadata)) {
+      patch.level = level;
+    }
+    const profession = prefs.profession;
+    if (
+      profession &&
+      professionById(profession) === profession &&
+      !hasChosenProfession(user.unsafeMetadata)
+    ) {
+      patch.profession = profession;
+    }
+    if (Object.keys(patch).length === 0) return;
     user
-      .update({ unsafeMetadata: { ...(user.unsafeMetadata ?? {}), level } })
+      .update({ unsafeMetadata: { ...(user.unsafeMetadata ?? {}), ...patch } })
       .catch(() => {});
   }, [user]);
 

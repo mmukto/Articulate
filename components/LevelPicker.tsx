@@ -1,31 +1,34 @@
 "use client";
 
 import { useState } from "react";
+import { LEVELS, readLevel, hasChosenLevel, type Level } from "@/lib/levels";
 import {
-  LEVELS,
-  LEVEL_MAP,
-  readLevel,
-  hasChosenLevel,
-  type Level,
-} from "@/lib/levels";
+  DEFAULT_PROFESSION,
+  levelInfoFor,
+  type Profession,
+} from "@/lib/professions";
 import { useMaybeUser } from "@/components/auth";
 import { LevelHelp } from "@/components/LevelHelp";
 
 // Reusable career-level switcher. Reads/writes the level in Clerk unsafeMetadata
 // (client-writable, like progress). Used on the module page (controlled via
 // `value`/`onChange` so drills re-filter instantly) and on the progress page
-// (uncontrolled). Includes the "Which level am I?" helper.
+// (uncontrolled). Includes the "Which level am I?" helper. Level labels adapt
+// to the profession (Student → High school / Undergraduate / Postgraduate).
 export function LevelPicker({
   value,
   onChange,
   heading,
   locked = false,
+  profession = DEFAULT_PROFESSION,
 }: {
   value?: Level;
   onChange?: (level: Level) => void;
   heading?: string;
   /** When true, the level can't be changed (free plans are locked to one level). */
   locked?: boolean;
+  /** Names the levels for this profession (display only; ids are unchanged). */
+  profession?: Profession;
 }) {
   const { user } = useMaybeUser();
   const [internal, setInternal] = useState<Level | null>(null);
@@ -64,13 +67,14 @@ export function LevelPicker({
           const isCurrent = current === l.id;
           // When locked, only show the current level (free plans = one level).
           if (locked && !isCurrent) return null;
+          const info = levelInfoFor(profession, l.id);
           return (
             <button
               key={l.id}
               type="button"
               onClick={() => pick(l.id)}
               disabled={saving || locked}
-              title={l.blurb}
+              title={info.blurb}
               className={`rounded-md border px-3 py-1.5 text-sm transition-colors disabled:opacity-100 ${
                 locked ? "cursor-default" : "disabled:opacity-60"
               } ${
@@ -79,12 +83,12 @@ export function LevelPicker({
                   : "border-ink/15 text-ink-soft hover:border-accent hover:text-accent"
               }`}
             >
-              {l.name}
+              {info.name}
             </button>
           );
         })}
       </div>
-      <p className="mt-2 text-xs text-ink-mute">{LEVEL_MAP[current].blurb}</p>
+      <p className="mt-2 text-xs text-ink-mute">{levelInfoFor(profession, current).blurb}</p>
       {locked ? (
         <p className="mt-1 text-xs text-ink-mute">
           Free plans are locked to one level.{" "}
@@ -94,7 +98,7 @@ export function LevelPicker({
           to switch or add levels.
         </p>
       ) : (
-        <LevelHelp />
+        <LevelHelp profession={profession} />
       )}
     </div>
   );

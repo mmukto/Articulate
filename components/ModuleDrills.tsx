@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { Module } from "@/lib/types";
-import { LEVEL_MAP, readLevel, hasChosenLevel, type Level } from "@/lib/levels";
-import type { Profession } from "@/lib/professions";
+import { readLevel, hasChosenLevel, type Level } from "@/lib/levels";
+import { levelInfoFor, type Profession } from "@/lib/professions";
 import { FREE_MODULE_LIMIT } from "@/lib/tiers";
 import { useMaybeUser } from "@/components/auth";
 import { DrillPractice } from "@/components/DrillPractice";
@@ -49,7 +49,7 @@ export function ModuleDrills({
   // (ignoring transient picker overrides) — this keeps the client in lock-step
   // with the server's per-level gate. Paid users switch their view instantly.
   const level = purchasedLevels.length === 0 ? defaultLevel : override ?? defaultLevel;
-  const levelName = LEVEL_MAP[level].name;
+  const levelName = levelInfoFor(profession, level).name;
 
   const levelPurchased = purchasedLevels.includes(level);
   // Free sign-up gets the 1-drill sampler only in the first few modules; paid
@@ -69,8 +69,13 @@ export function ModuleDrills({
       {/* Profession switcher (free preference; server re-filters on change) */}
       <ProfessionPicker value={profession} />
 
-      {/* Level switcher / onboarding */}
-      <LevelPicker value={level} onChange={setOverride} locked={lockPicker} />
+      {/* Level switcher / onboarding (labels adapt to the profession) */}
+      <LevelPicker
+        value={level}
+        onChange={setOverride}
+        locked={lockPicker}
+        profession={profession}
+      />
 
       {/* Drills for the chosen level */}
       {levelDrills.length === 0 ? (

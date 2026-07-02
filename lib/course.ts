@@ -24,6 +24,9 @@ import { CONSULTANT_SENIOR_DRILLS } from "./drills-consultant-senior";
 import { OPERATOR_EARLY_DRILLS } from "./drills-operator-early";
 import { OPERATOR_MID_DRILLS } from "./drills-operator-mid";
 import { OPERATOR_SENIOR_DRILLS } from "./drills-operator-senior";
+import { STUDENT_EARLY_DRILLS } from "./drills-student-early";
+import { STUDENT_MID_DRILLS } from "./drills-student-mid";
+import { STUDENT_SENIOR_DRILLS } from "./drills-student-senior";
 
 // The rubric lives in lib/rubric.ts (client-safe, no drill content); re-export
 // for server code that already imports it from here. Client components should
@@ -811,6 +814,9 @@ const PROFESSION_BANKS: Record<string, Drill[]>[] = [
   OPERATOR_EARLY_DRILLS,
   OPERATOR_MID_DRILLS,
   OPERATOR_SENIOR_DRILLS,
+  STUDENT_EARLY_DRILLS,
+  STUDENT_MID_DRILLS,
+  STUDENT_SENIOR_DRILLS,
 ];
 
 // Number modules by their position so inserting/reordering never desyncs, and

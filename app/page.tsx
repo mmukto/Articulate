@@ -159,8 +159,9 @@ export default async function HomePage() {
           Executive</span> — and for{" "}
           <span className="font-medium text-ink">your profession</span>: business,
           software engineering, medicine, law, finance, sales &amp; marketing,
-          consulting, or operations. Pick your level and profession when you join;
-          change them anytime. Go in order, or straight to a weak spot.
+          consulting, operations, or student (high school, undergraduate,
+          postgraduate). Pick your profession and level when you join; change them
+          anytime. Go in order, or straight to a weak spot.
         </p>
         <SignedIn>
           <CourseProgress keys={professionDrillKeys} />

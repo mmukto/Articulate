@@ -61,7 +61,7 @@ in `lib/site.ts` (`SITE_URL`, default `https://iarticulate.ca`).
   **and** enforced server-side in the feedback/speak routes — never trust the client.
 - **Professions** (`lib/professions.ts`): drills are also written per profession —
   business (default; the original general library), engineer, doctor, lawyer, finance,
-  sales, consultant, operator — 25 drills per module per level per profession, in
+  sales, consultant, operator, student — 25 drills per module per level per profession, in
   `lib/drills-<profession>-<level>.ts` banks merged in `course.ts`. **Append-only**: the
   practiced bitset (`lib/practiced.ts`) indexes drills by position, so never reorder or
   remove banks/drills — only append. The profession is a FREE preference in Clerk
@@ -70,7 +70,13 @@ in `lib/site.ts` (`SITE_URL`, default `https://iarticulate.ca`).
   level+profession group). Module, progress, and home pages filter drills by profession
   on the **server**; client components must import the rubric from `lib/rubric.ts`, not
   `lib/course.ts`, to keep the multi-thousand-drill library out of client bundles. The
-  AI coach calibrates to profession + level (`lib/prompt.ts` coachNotes).
+  AI coach calibrates to profession + level (`lib/prompt.ts` coachNotes). Professions
+  can override how the three levels are NAMED and coached via `levelInfo` /
+  `levelInfoFor()` — the Student profession renames early/mid/senior to High school /
+  Undergraduate / Postgraduate (level IDs and per-level pricing are untouched). Sign-up
+  on `/pricing` is profession-first: a dropdown (step 1) before the level chooser
+  (step 2); `stashPrefs` in `components/CheckoutResume.tsx` carries the chosen
+  profession+level through Clerk sign-up for both free and paid paths.
 - **Comp accounts** (`lib/entitlements.ts`): emails/usernames in `COMP_USER_EMAILS`
   (server-only env, comma-separated) resolve to **Max tier with the AI cap bypassed** —
   full access, no subscription. Checked in `tierForUser`/`isCompUser`; kept in env so the

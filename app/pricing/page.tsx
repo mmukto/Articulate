@@ -2,9 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { SignInButton, SignUpButton, useMaybeUser } from "@/components/auth";
-import { stashCheckout, stashLevel } from "@/components/CheckoutResume";
+import { stashCheckout, stashPrefs } from "@/components/CheckoutResume";
 import { TIERS, drillsPerModule, tierById, FREE_MODULE_LIMIT, type TierId } from "@/lib/tiers";
-import { LEVELS, LEVEL_MAP, DEFAULT_LEVEL, readLevel, type Level } from "@/lib/levels";
+import { LEVELS, DEFAULT_LEVEL, readLevel, type Level } from "@/lib/levels";
+import {
+  PROFESSIONS,
+  DEFAULT_PROFESSION,
+  professionById,
+  levelInfoFor,
+  type Profession,
+} from "@/lib/professions";
 import { SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/lib/site";
 
 type CancelInfo = {
@@ -23,6 +30,9 @@ export default function PricingPage() {
   const [currentTier, setCurrentTier] = useState<TierId | null>(null);
   const [ownedLevels, setOwnedLevels] = useState<Level[]>([]);
   const [selectedLevels, setSelectedLevels] = useState<Level[]>([DEFAULT_LEVEL]);
+  // Picked FIRST (before levels): names the levels (Student → High school /
+  // Undergraduate / Postgraduate) and is saved to the account at sign-up.
+  const [profession, setProfession] = useState<Profession>(DEFAULT_PROFESSION);
   const [signedIn, setSignedIn] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +71,7 @@ export default function PricingPage() {
         if (cancelled || !d?.enabled) return null;
         setSignedIn(true);
         setCurrentTier(d.tierId as TierId);
+        setProfession(professionById(d.currentProfession));
         setCancelAtPeriodEnd(d.cancelAtPeriodEnd === true);
         setAccessUntil(typeof d.accessUntil === "number" ? d.accessUntil : null);
         const owned = (Array.isArray(d.levels) ? d.levels : []) as Level[];
@@ -137,6 +148,17 @@ export default function PricingPage() {
   }
   const levelCount = selectedLevels.length;
   const onPaidPlan = signedIn && !!currentTier && currentTier !== "free";
+
+  // Profession is a free preference: signed-in users save it immediately;
+  // signed-out visitors carry it through sign-up via stashPrefs below.
+  function changeProfession(next: Profession) {
+    setProfession(next);
+    if (user) {
+      user
+        .update({ unsafeMetadata: { ...(user.unsafeMetadata ?? {}), profession: next } })
+        .catch(() => {});
+    }
+  }
 
   // New subscriptions go straight to Stripe Checkout (which shows the card form,
   // so there's no surprise charge). In-place upgrades charge the saved card
@@ -287,8 +309,10 @@ export default function PricingPage() {
       {!signedIn ? (
         <div className="rounded-xl border border-accent/40 bg-accent-wash/30 p-4 text-center text-sm text-ink-soft">
           <span className="font-medium text-ink">To sign up, choose a plan below.</span>{" "}
-          Start with <span className="font-medium text-ink">Free</span>, or pick your career
-          level(s) and a paid plan — account creation continues from there.
+          Pick your <span className="font-medium text-ink">profession</span>, then your{" "}
+          <span className="font-medium text-ink">level(s)</span>, then start with{" "}
+          <span className="font-medium text-ink">Free</span> or a paid plan — account creation
+          continues from there.
         </div>
       ) : null}
 
@@ -314,18 +338,43 @@ export default function PricingPage() {
           </div>
           <p className="mt-1 text-sm text-ink-soft">
             {ownedLevels.length > 0
-              ? `Career level${ownedLevels.length === 1 ? "" : "s"}: ` +
-                ownedLevels.map((l) => LEVEL_MAP[l].name).join(", ")
+              ? `Level${ownedLevels.length === 1 ? "" : "s"}: ` +
+                ownedLevels.map((l) => levelInfoFor(profession, l).name).join(", ")
               : "—"}
           </p>
         </section>
       ) : null}
 
-      {/* Level chooser — the price below multiplies by how many you pick. */}
+      {/* Step 1: profession, Step 2: level(s). The profession comes first — it
+          names the levels (Student → High school / Undergraduate / Postgraduate)
+          and is saved to the account at sign-up. */}
       <section id="plans" className="scroll-mt-24 rounded-xl border border-ink/10 bg-white/50 p-5">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="font-serif text-lg font-semibold tracking-tight">
+          1. What&apos;s your profession?
+        </h2>
+        <p className="mt-1 text-sm text-ink-soft">
+          Drills and AI coaching are written for your profession. It&apos;s a free setting —
+          switch anytime.
+        </p>
+        <select
+          value={profession}
+          onChange={(e) => changeProfession(e.target.value as Profession)}
+          aria-label="Your profession"
+          className="mt-3 w-full max-w-sm rounded-md border border-ink/15 bg-white px-3 py-2 text-sm text-ink shadow-sm outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
+        >
+          {PROFESSIONS.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1.5 text-xs text-ink-mute">
+          {PROFESSIONS.find((p) => p.id === profession)?.blurb}
+        </p>
+
+        <div className="mt-5 flex flex-wrap items-baseline justify-between gap-2 border-t border-ink/10 pt-4">
           <h2 className="font-serif text-lg font-semibold tracking-tight">
-            Which level(s) do you want to train?
+            2. Which level(s) do you want to train?
           </h2>
           <span className="text-sm text-ink-mute">
             {levelCount === 0
@@ -341,12 +390,13 @@ export default function PricingPage() {
           {LEVELS.map((l) => {
             const on = selectedLevels.includes(l.id);
             const owned = ownedLevels.includes(l.id);
+            const info = levelInfoFor(profession, l.id);
             return (
               <button
                 key={l.id}
                 type="button"
                 onClick={() => toggleLevel(l.id)}
-                title={owned ? "Included in your plan — switching levels needs cancel + re-subscribe" : l.blurb}
+                title={owned ? "Included in your plan — switching levels needs cancel + re-subscribe" : info.blurb}
                 aria-pressed={on}
                 className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${
                   owned ? "cursor-default" : ""
@@ -357,7 +407,7 @@ export default function PricingPage() {
                 }`}
               >
                 {on ? "✓ " : ""}
-                {l.name}
+                {info.name}
                 {owned ? <span className={on ? "text-white/80" : "text-ink-mute"}> · owned</span> : null}
               </button>
             );
@@ -525,7 +575,10 @@ export default function PricingPage() {
                     <SignUpButton mode="modal" forceRedirectUrl="/">
                       <button
                         onClick={() =>
-                          stashLevel(selectedLevels[selectedLevels.length - 1] ?? DEFAULT_LEVEL)
+                          stashPrefs({
+                            level: selectedLevels[selectedLevels.length - 1] ?? DEFAULT_LEVEL,
+                            profession,
+                          })
                         }
                         className="w-full rounded-md border border-ink/15 px-4 py-2 text-sm font-medium text-ink-soft transition-colors hover:border-accent hover:text-accent"
                       >
@@ -535,7 +588,10 @@ export default function PricingPage() {
                   ) : (
                     <SignUpButton mode="modal" forceRedirectUrl="/pricing">
                       <button
-                        onClick={() => stashCheckout(tier.id, selectedLevels)}
+                        onClick={() => {
+                          stashCheckout(tier.id, selectedLevels);
+                          stashPrefs({ profession });
+                        }}
                         disabled={levelCount === 0}
                         className="w-full rounded-md bg-accent px-4 py-2 text-sm font-medium text-white shadow-sm transition-transform hover:-translate-y-0.5 disabled:opacity-60"
                       >
