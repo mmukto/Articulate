@@ -23,6 +23,9 @@ export type ProviderName = "gemini" | "claude";
 export interface Usage {
   inputTokens: number;
   outputTokens: number;
+  /** Model that served the call (fallbacks differ from the primary) — the
+   *  spend meter prices tokens per model. */
+  model: string;
 }
 
 /**
@@ -61,7 +64,11 @@ export async function gradeResponse(
 
   return {
     feedback: normalize(raw.data),
-    usage: { inputTokens: raw.inputTokens, outputTokens: raw.outputTokens },
+    usage: {
+      inputTokens: raw.inputTokens,
+      outputTokens: raw.outputTokens,
+      model: raw.model,
+    },
   };
 }
 
@@ -90,7 +97,11 @@ export async function gradeSpoken(
   );
   return {
     feedback: normalizeSpoken(raw.data),
-    usage: { inputTokens: raw.inputTokens, outputTokens: raw.outputTokens },
+    usage: {
+      inputTokens: raw.inputTokens,
+      outputTokens: raw.outputTokens,
+      model: raw.model,
+    },
   };
 }
 

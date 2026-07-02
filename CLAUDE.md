@@ -39,6 +39,11 @@ in `lib/site.ts` (`SITE_URL`, default `https://iarticulate.ca`).
 - **AI coach.** Default model is `gemini-2.5-flash-lite` (override with `GEMINI_MODEL`);
   the provider is switchable to Claude via `ANTHROPIC_API_KEY`. Gemini billing must be
   enabled on the Google Cloud project (free tier is effectively unavailable).
+  **Resilience:** transient Gemini errors (503 "high demand", 429, flaky 500s) are
+  retried with backoff and then fall back to `GEMINI_FALLBACK_MODEL` (default
+  `gemini-2.5-flash`) inside `lib/providers/gemini.ts`; each call reports which model
+  served it and `lib/limits.ts` meters spend at that model's per-token price (unknown
+  models are metered at the highest listed price, failing safe).
 - **Subscription tiers** (`lib/tiers.ts`): Starter / Plus / Pro / Max unlock
   30 / 60 / 120 / 250 **total** drills *per purchased career level* (spread evenly =
   3/6/12/25 per module, via `drillsPerModule`). Free is a sampler: 1 drill per module in

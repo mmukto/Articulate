@@ -87,5 +87,6 @@ export async function grade(
     data: toolUse.input,
     inputTokens: message.usage?.input_tokens ?? 0,
     outputTokens: message.usage?.output_tokens ?? 0,
+    model: MODEL,
   };
 }

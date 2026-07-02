@@ -115,12 +115,14 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Failed to generate feedback.";
-    // Surface a clean message; log the detail server-side.
+    // Surface a clean message; log the detail server-side. "Over capacity" is
+    // the provider's retries-exhausted case — a true (temporary) 503.
     console.error("[feedback] grading failed:", err);
-    const isConfig = message.includes("isn't configured");
+    const isUnavailable =
+      message.includes("isn't configured") || message.includes("over capacity");
     return NextResponse.json(
       { error: message },
-      { status: isConfig ? 503 : 500 },
+      { status: isUnavailable ? 503 : 500 },
     );
   }
 }

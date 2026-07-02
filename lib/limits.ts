@@ -25,17 +25,29 @@ const WINDOW_DAYS = Number(process.env.USER_ALLOWANCE_DAYS) || 365;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WINDOW_MS = WINDOW_DAYS * DAY_MS;
 
-// Price of the active model (gemini-2.5-flash-lite), USD per 1M tokens. Used to
-// turn token usage into dollars for the cap. If you switch GEMINI_MODEL or the
-// provider, update these so the cap stays accurate. (Audio input is billed a
-// little higher by Google; we approximate it at the text input rate — close
-// enough for a guardrail.)
-const PRICE = { inputPerMTokens: 0.1, outputPerMTokens: 0.4 };
+// USD per 1M tokens for each model the provider may serve a request with. The
+// primary (gemini-2.5-flash-lite) is cheap; when it's overloaded the provider
+// falls back to gemini-2.5-flash, which MUST be metered at its higher rate.
+// Unknown models are metered at the most expensive listed price so the cap
+// fails safe. (Audio input is billed a little higher by Google; we approximate
+// it at the text input rate — close enough for a guardrail.) If you change
+// GEMINI_MODEL / GEMINI_FALLBACK_MODEL or enable the Claude provider, add the
+// model's price here.
+const PRICES: Record<string, { inputPerMTokens: number; outputPerMTokens: number }> = {
+  "gemini-2.5-flash-lite": { inputPerMTokens: 0.1, outputPerMTokens: 0.4 },
+  "gemini-2.5-flash": { inputPerMTokens: 0.3, outputPerMTokens: 2.5 },
+};
+const MAX_PRICE = Object.values(PRICES).reduce((a, b) =>
+  b.inputPerMTokens + b.outputPerMTokens > a.inputPerMTokens + a.outputPerMTokens
+    ? b
+    : a,
+);
 
 export function estimateCostUsd(usage: Usage): number {
+  const price = PRICES[usage.model] ?? MAX_PRICE;
   return (
-    (usage.inputTokens / 1_000_000) * PRICE.inputPerMTokens +
-    (usage.outputTokens / 1_000_000) * PRICE.outputPerMTokens
+    (usage.inputTokens / 1_000_000) * price.inputPerMTokens +
+    (usage.outputTokens / 1_000_000) * price.outputPerMTokens
   );
 }
 
