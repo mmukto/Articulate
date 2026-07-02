@@ -141,7 +141,7 @@ export default function RootLayout({
             <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 px-6 py-6 text-xs text-ink-mute">
               <span>
                 iArticulate™ · AI-coached practice for executive communication. Feedback
-                is AI-generated and meant as practice, not gospel.
+                is AI-generated and meant as practice.
               </span>
               <a href={SUPPORT_MAILTO} className="whitespace-nowrap transition-colors hover:text-accent">
                 Contact support
