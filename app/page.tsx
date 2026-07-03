@@ -155,11 +155,13 @@ export default async function HomePage() {
           bank of AI-coached drills, written for{" "}
           <span className="font-medium text-ink">three career levels — Early, Mid, and
           Executive</span> — and for{" "}
-          <span className="font-medium text-ink">your profession</span>: business,
-          software engineering, medicine, law, finance, sales &amp; marketing,
-          consulting, operations, or student (high school, undergraduate,
-          postgraduate). Your plan covers the profession and level(s) you choose when
-          you join. Go in order, or straight to a weak spot.
+          <span className="font-medium text-ink">your work</span>: students (high
+          school, undergraduate, postgraduate), agriculture, service work, industry
+          &amp; manufacturing, construction &amp; trades, transport &amp; logistics,
+          business &amp; administration (including finance, consulting, law, and
+          sales), education, healthcare, technology, and public service. Your plan
+          covers the profession and level(s) you choose when you join. Go in order, or
+          straight to a weak spot.
         </p>
         <SignedIn>
           <CourseProgress keys={professionDrillKeys} />

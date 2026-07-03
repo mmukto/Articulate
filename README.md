@@ -43,13 +43,15 @@ home-screen icon launches full-screen with no browser chrome.
 ## What's inside
 
 - **10 modules**, each with a tight lesson, before/after examples, and a deep bank of
-  AI-coached practice drills written for **three career levels** — Early career, Mid
-  career (manager), and Executive — and for **nine professions** — general business
-  (default), software engineering, medicine, law, finance, sales & marketing,
-  consulting, operations, and student — 25 drills per level per profession per module.
-  The profession is a free preference (switch anytime); scenarios and AI coaching are
-  calibrated to it. For students the three levels read **High school / Undergraduate /
-  Postgraduate** (same level IDs and pricing, profession-specific naming):
+  AI-coached practice drills written for **three levels** and for **15 professions
+  across 11 workforce categories** — students (high school / undergraduate /
+  postgraduate), agricultural workers, service workers, industrial & manufacturing,
+  construction & trades, transport & logistics, business & administrative (business,
+  finance, consulting, law, sales), education, healthcare, technology, and public
+  service & government — 25 drills per level per profession per module. Scenarios and
+  AI coaching are calibrated to the profession, and each profession names its three
+  levels for its own world (e.g. construction: Apprentice / Foreman / Project
+  manager; students: High school / Undergraduate / Postgraduate):
   1. Lead With the Point (BLUF)
   2. Start With the Audience (curse of knowledge)
   3. Structure That Carries (Pyramid, SCQA, PREP)

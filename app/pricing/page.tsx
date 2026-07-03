@@ -6,7 +6,7 @@ import { stashCheckout, stashPrefs } from "@/components/CheckoutResume";
 import { TIERS, drillsPerModule, tierById, FREE_MODULE_LIMIT, type TierId } from "@/lib/tiers";
 import { LEVELS, DEFAULT_LEVEL, readLevel, type Level } from "@/lib/levels";
 import {
-  PROFESSIONS,
+  PROFESSION_CATEGORIES,
   PROFESSION_MAP,
   DEFAULT_PROFESSION,
   professionById,
@@ -393,11 +393,22 @@ export default function PricingPage() {
           aria-label="Your profession"
           className="mt-3 w-full max-w-sm rounded-md border border-ink/15 bg-white px-3 py-2 text-sm text-ink shadow-sm outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
         >
-          {PROFESSIONS.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
+          {PROFESSION_CATEGORIES.map((cat) =>
+            cat.professions.length === 1 ? (
+              // Single-profession category: the category label IS the option.
+              <option key={cat.professions[0]} value={cat.professions[0]}>
+                {cat.label}
+              </option>
+            ) : (
+              <optgroup key={cat.label} label={cat.label}>
+                {cat.professions.map((id) => (
+                  <option key={id} value={id}>
+                    {PROFESSION_MAP[id].name}
+                  </option>
+                ))}
+              </optgroup>
+            ),
+          )}
         </select>
         <p className="mt-1.5 text-xs text-ink-mute">
           {PROFESSION_MAP[profession].blurb}

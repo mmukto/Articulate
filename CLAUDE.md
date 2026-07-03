@@ -70,9 +70,17 @@ in `lib/site.ts` (`SITE_URL`, default `https://iarticulate.ca`).
   if a paid sub has no recorded levels). Drill access is gated in the module page UI
   **and** enforced server-side in the feedback/speak routes — never trust the client.
 - **Professions** (`lib/professions.ts`): drills are also written per profession —
-  business (default; the original general library), engineer, doctor, lawyer, finance,
-  sales, consultant, operator, student — 25 drills per module per level per profession, in
-  `lib/drills-<profession>-<level>.ts` banks merged in `course.ts`. **Bitset order is
+  15 purchasable professions organized into 11 workforce categories
+  (`PROFESSION_CATEGORIES`, rendered as optgroups in the pricing dropdown): student,
+  agriculture, service, industrial, construction, operator (displayed "Transport,
+  logistics & operations"), business+finance+consultant+lawyer+sales (grouped under
+  "Business & administrative"), education, doctor (displayed "Healthcare
+  professional"), engineer (displayed "Technology professional"), publicservice.
+  Internal profession IDs never change (billing metadata + drill tags depend on
+  them); only display names/grouping do. 25 drills per module per level per
+  profession, in `lib/drills-<profession>-<level>.ts` banks merged in `course.ts`.
+  Worker professions override level display names via `levelInfo` (e.g. construction:
+  Apprentice / Foreman / Project manager). **Bitset order is
   load-bearing**: the practiced bitset (`lib/practiced.ts`) indexes drills by position
   in `ALL_DRILL_KEYS`, which enumerates REGION-first (all original business drills in
   their pre-professions order, then each profession bank in `PROFESSION_BANKS` order).

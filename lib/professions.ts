@@ -18,7 +18,13 @@ export type Profession =
   | "sales"
   | "consultant"
   | "operator"
-  | "student";
+  | "student"
+  | "agriculture"
+  | "service"
+  | "industrial"
+  | "construction"
+  | "education"
+  | "publicservice";
 
 /** Per-profession override of how a career level is named and coached. The
  *  level IDs (early/mid/senior) — and therefore pricing — never change; only
@@ -52,17 +58,17 @@ export const PROFESSIONS: ProfessionInfo[] = [
   },
   {
     id: "engineer",
-    name: "Software engineer",
-    blurb: "Code reviews, incidents, technical tradeoffs, engineering leadership.",
+    name: "Technology professional",
+    blurb: "Software, IT support, engineering, data — systems and incidents.",
     coachNote:
-      "a software engineer / technology professional. Their world is standups, code reviews, incidents, technical tradeoffs, and translating engineering reality for non-technical stakeholders.",
+      "a technology professional (software, IT, engineering, data). Their world is standups, code reviews, incidents and support tickets, technical tradeoffs, and translating technology for non-technical stakeholders.",
   },
   {
     id: "doctor",
-    name: "Doctor / healthcare",
-    blurb: "Patients, families, clinical teams, handoffs, hospital leadership.",
+    name: "Healthcare professional",
+    blurb: "Doctors, nurses, technicians, caregivers — patients and care teams.",
     coachNote:
-      "a physician / healthcare professional. Their world is patient care, clinical handoffs, presenting cases, explaining medicine to patients and families, and working with hospital administration.",
+      "a healthcare professional (physician, nurse, technician, caregiver). Their world is patient care, clinical handoffs, presenting cases, explaining medicine to patients and families, and working with administration.",
   },
   {
     id: "lawyer",
@@ -94,10 +100,10 @@ export const PROFESSIONS: ProfessionInfo[] = [
   },
   {
     id: "operator",
-    name: "Operator / operations",
-    blurb: "Running the business day-to-day — sites, supply chain, front line.",
+    name: "Transport, logistics & operations",
+    blurb: "Drivers, delivery, warehouse, supply chain — operations day-to-day.",
     coachNote:
-      "an operations professional. Their world is running the business day-to-day — shift handoffs, process changes, supply chain and vendor coordination, KPI reviews, and operational incidents.",
+      "a transport, logistics, or operations professional. Their world is moving goods and running the business day-to-day — shift handoffs, deliveries and dispatch, warehouses, supply chain and vendor coordination, KPI reviews, and operational incidents.",
   },
   {
     id: "student",
@@ -128,6 +134,194 @@ export const PROFESSIONS: ProfessionInfo[] = [
       },
     },
   },
+  {
+    id: "agriculture",
+    name: "Agricultural worker",
+    blurb: "Farming, fishing, livestock, forestry — crews, seasons, buyers.",
+    coachNote:
+      "an agricultural professional (farming, fishing, livestock, forestry). Their world is crews and seasons — weather and equipment calls, harvests and catches, buyers, vets and agronomists, co-ops, and regulators. Keep language plain and practical.",
+    levelInfo: {
+      early: {
+        name: "Farmhand / crew",
+        blurb: "Crew updates, equipment issues, safety flags, asking the manager.",
+        coachNote:
+          "a farmhand, deckhand, or field/forestry crew member. Pitch feedback to their world — crew handoffs, reporting equipment or animal problems, weather and safety flags, and clear asks to the farm manager or skipper. No office or corporate context.",
+      },
+      mid: {
+        name: "Farm manager / crew lead",
+        blurb: "Running crews and seasons — suppliers, buyers, vets, schedules.",
+        coachNote:
+          "a farm manager, skipper, or crew lead. Pitch feedback to their world — directing crews through a season, coordinating suppliers, buyers, vets and agronomists, planning around weather, and reporting to the owner or co-op.",
+      },
+      senior: {
+        name: "Owner-operator",
+        blurb: "The whole operation — banks, contracts, co-ops, regulators.",
+        coachNote:
+          "a farm owner-operator or agribusiness leader. Pitch feedback to their world — negotiating with banks and buyers, contracts and insurance, co-op and community leadership, regulators, and big seasonal bets.",
+      },
+    },
+  },
+  {
+    id: "service",
+    name: "Service worker",
+    blurb: "Retail, hospitality, food service, care, cleaning, security.",
+    coachNote:
+      "a service professional (retail, hospitality, food service, personal care, cleaning, security). Their world is customers and shifts — guest interactions, complaints, schedules, and keeping a team and a manager on the same page. Keep language plain and practical.",
+    levelInfo: {
+      early: {
+        name: "Front line",
+        blurb: "Customers, shift swaps, escalations, updates to the manager.",
+        coachNote:
+          "a front-line service worker (retail associate, server, housekeeper, carer, security guard). Pitch feedback to their world — customer conversations, handling complaints, shift swaps and handovers, and clear updates or asks to the shift manager.",
+      },
+      mid: {
+        name: "Shift lead / manager",
+        blurb: "Running the floor — scheduling, staff feedback, hard customers.",
+        coachNote:
+          "a shift lead or store/restaurant/venue manager. Pitch feedback to their world — running the floor, scheduling and staffing, giving feedback to staff, resolving escalated customer issues, and reporting to the owner or district manager.",
+      },
+      senior: {
+        name: "Multi-site / owner",
+        blurb: "Several locations or your own business — budgets, head office.",
+        coachNote:
+          "a district/multi-site manager or owner in a service business. Pitch feedback to their world — performance across locations, budgets and targets, head-office or franchisor communication, vendor negotiations, and hiring managers.",
+      },
+    },
+  },
+  {
+    id: "industrial",
+    name: "Industrial & manufacturing worker",
+    blurb: "Factory floor, machine operation, assembly, processing.",
+    coachNote:
+      "an industrial/manufacturing professional. Their world is the plant floor — shifts and lines, safety and quality, downtime, maintenance, and production targets. Keep language plain and practical.",
+    levelInfo: {
+      early: {
+        name: "Operator / assembler",
+        blurb: "Shift handoffs, quality flags, safety reports, machine issues.",
+        coachNote:
+          "a machine operator or assembler on a production line. Pitch feedback to their world — shift handoffs, flagging quality or safety problems, reporting machine issues, and making clear suggestions to the line supervisor.",
+      },
+      mid: {
+        name: "Line supervisor",
+        blurb: "Running lines and shifts — downtime, coordination, improvements.",
+        coachNote:
+          "a line supervisor or production planner. Pitch feedback to their world — running lines and shifts, explaining downtime and misses, coordinating with maintenance and quality, toolbox talks, and pitching improvements to the plant manager.",
+      },
+      senior: {
+        name: "Plant manager",
+        blurb: "The whole plant — targets to HQ, capital asks, workforce, audits.",
+        coachNote:
+          "a plant manager or manufacturing leader. Pitch feedback to their world — production and safety performance to headquarters, capital investment cases, workforce and union communication, customer audits, and incident accountability.",
+      },
+    },
+  },
+  {
+    id: "construction",
+    name: "Construction & trades worker",
+    blurb: "Building sites and trades — crews, inspections, clients, bids.",
+    coachNote:
+      "a construction/trades professional (builder, electrician, plumber, carpenter, equipment operator). Their world is job sites — crews and subcontractors, safety, inspections, schedules, materials, and clients. Keep language plain and practical.",
+    levelInfo: {
+      early: {
+        name: "Apprentice / tradesperson",
+        blurb: "Questions to the foreman, safety concerns, materials, clients.",
+        coachNote:
+          "an apprentice or tradesperson on site. Pitch feedback to their world — clear questions to the foreman, flagging safety or materials problems, explaining work to a homeowner or client, and coordinating with other trades.",
+      },
+      mid: {
+        name: "Foreman / site supervisor",
+        blurb: "Running the site — subs, inspections, schedule slips, toolbox talks.",
+        coachNote:
+          "a foreman or site supervisor. Pitch feedback to their world — directing crews and subcontractors, toolbox talks, inspection prep, reporting schedule slips and change conditions to the project manager, and keeping the client informed.",
+      },
+      senior: {
+        name: "Project manager / contractor",
+        blurb: "Whole projects or your own firm — bids, change orders, disputes.",
+        coachNote:
+          "a construction project manager or contractor-owner. Pitch feedback to their world — bids and estimates, client change orders and disputes, municipal inspectors and permits, subcontractor contracts, and project financials.",
+      },
+    },
+  },
+  {
+    id: "education",
+    name: "Education professional",
+    blurb: "Teachers, professors, trainers, administrators — class to board.",
+    coachNote:
+      "an education professional. Their world is students and families — classrooms and lessons, parent communication, colleagues and leadership, curriculum, and school community.",
+    levelInfo: {
+      early: {
+        name: "New teacher / trainer",
+        blurb: "Parent emails, class announcements, principal updates, feedback.",
+        coachNote:
+          "a new teacher, teaching assistant, or trainer. Pitch feedback to their world — parent emails, classroom announcements and instructions, updates to the principal or lead teacher, and asking experienced colleagues for help.",
+      },
+      mid: {
+        name: "Experienced teacher / dept head",
+        blurb: "Hard parent conferences, curriculum proposals, mentoring staff.",
+        coachNote:
+          "an experienced teacher or department head. Pitch feedback to their world — difficult parent conferences, curriculum and resource proposals, mentoring newer teachers, staff meetings, and advocating for students to administration.",
+      },
+      senior: {
+        name: "Principal / administrator",
+        blurb: "School leadership — boards, community letters, budgets, crises.",
+        coachNote:
+          "a principal, dean, or education administrator. Pitch feedback to their world — school-board presentations, letters to the whole community, budget and staffing cases, difficult personnel decisions, and crisis communication.",
+      },
+    },
+  },
+  {
+    id: "publicservice",
+    name: "Public service & government",
+    blurb: "Civil service, police, military, postal — the public and the chain.",
+    coachNote:
+      "a public servant (civil service, police, military, postal, municipal). Their world is the public and the chain of command — citizen interactions, incident reports, policy and procedure, inter-agency coordination, and public accountability.",
+    levelInfo: {
+      early: {
+        name: "Officer / front counter",
+        blurb: "Citizen interactions, incident reports, requests up the chain.",
+        coachNote:
+          "a front-line public servant (clerk, officer, postal or municipal worker). Pitch feedback to their world — clear citizen interactions, incident and shift reports, following and explaining procedure, and precise requests up the chain of command.",
+      },
+      mid: {
+        name: "Supervisor / program lead",
+        blurb: "Teams and programs — rollouts, agencies, staffing, complaints.",
+        coachNote:
+          "a public-sector supervisor, sergeant, or program manager. Pitch feedback to their world — briefing teams on policy rollouts, inter-agency coordination, staffing and scheduling, responding to public complaints, and reporting up to directors.",
+      },
+      senior: {
+        name: "Director / chief",
+        blurb: "Department leadership — councils, press, budgets, crises.",
+        coachNote:
+          "a department director, chief, or senior official. Pitch feedback to their world — briefing councils and legislatures, press statements, budget defenses, policy recommendations, and crisis communication under public scrutiny.",
+      },
+    },
+  },
+];
+
+/** The 11 top-level workforce categories shown in the sign-up dropdown. Each
+ *  groups one or more purchasable professions; the specialist banks (finance,
+ *  consultant, lawyer, sales) sit under Business & administrative. Display
+ *  grouping only — profession ids, billing, and drill tags are unaffected. */
+export interface ProfessionCategory {
+  label: string;
+  professions: Profession[];
+}
+
+export const PROFESSION_CATEGORIES: ProfessionCategory[] = [
+  { label: "Students", professions: ["student"] },
+  { label: "Agricultural workers", professions: ["agriculture"] },
+  { label: "Service workers", professions: ["service"] },
+  { label: "Industrial & manufacturing", professions: ["industrial"] },
+  { label: "Construction & trades", professions: ["construction"] },
+  { label: "Transport & logistics", professions: ["operator"] },
+  {
+    label: "Business & administrative",
+    professions: ["business", "finance", "consultant", "lawyer", "sales"],
+  },
+  { label: "Education", professions: ["education"] },
+  { label: "Healthcare", professions: ["doctor"] },
+  { label: "Technology", professions: ["engineer"] },
+  { label: "Public service & government", professions: ["publicservice"] },
 ];
 
 export const PROFESSION_MAP: Record<Profession, ProfessionInfo> =

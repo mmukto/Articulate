@@ -27,6 +27,24 @@ import { OPERATOR_SENIOR_DRILLS } from "./drills-operator-senior";
 import { STUDENT_EARLY_DRILLS } from "./drills-student-early";
 import { STUDENT_MID_DRILLS } from "./drills-student-mid";
 import { STUDENT_SENIOR_DRILLS } from "./drills-student-senior";
+import { AGRICULTURE_EARLY_DRILLS } from "./drills-agriculture-early";
+import { AGRICULTURE_MID_DRILLS } from "./drills-agriculture-mid";
+import { AGRICULTURE_SENIOR_DRILLS } from "./drills-agriculture-senior";
+import { SERVICE_EARLY_DRILLS } from "./drills-service-early";
+import { SERVICE_MID_DRILLS } from "./drills-service-mid";
+import { SERVICE_SENIOR_DRILLS } from "./drills-service-senior";
+import { INDUSTRIAL_EARLY_DRILLS } from "./drills-industrial-early";
+import { INDUSTRIAL_MID_DRILLS } from "./drills-industrial-mid";
+import { INDUSTRIAL_SENIOR_DRILLS } from "./drills-industrial-senior";
+import { CONSTRUCTION_EARLY_DRILLS } from "./drills-construction-early";
+import { CONSTRUCTION_MID_DRILLS } from "./drills-construction-mid";
+import { CONSTRUCTION_SENIOR_DRILLS } from "./drills-construction-senior";
+import { EDUCATION_EARLY_DRILLS } from "./drills-education-early";
+import { EDUCATION_MID_DRILLS } from "./drills-education-mid";
+import { EDUCATION_SENIOR_DRILLS } from "./drills-education-senior";
+import { PUBLICSERVICE_EARLY_DRILLS } from "./drills-publicservice-early";
+import { PUBLICSERVICE_MID_DRILLS } from "./drills-publicservice-mid";
+import { PUBLICSERVICE_SENIOR_DRILLS } from "./drills-publicservice-senior";
 
 // The rubric lives in lib/rubric.ts (client-safe, no drill content); re-export
 // for server code that already imports it from here. Client components should
@@ -818,6 +836,24 @@ const PROFESSION_BANKS: Record<string, Drill[]>[] = [
   STUDENT_EARLY_DRILLS,
   STUDENT_MID_DRILLS,
   STUDENT_SENIOR_DRILLS,
+  AGRICULTURE_EARLY_DRILLS,
+  AGRICULTURE_MID_DRILLS,
+  AGRICULTURE_SENIOR_DRILLS,
+  SERVICE_EARLY_DRILLS,
+  SERVICE_MID_DRILLS,
+  SERVICE_SENIOR_DRILLS,
+  INDUSTRIAL_EARLY_DRILLS,
+  INDUSTRIAL_MID_DRILLS,
+  INDUSTRIAL_SENIOR_DRILLS,
+  CONSTRUCTION_EARLY_DRILLS,
+  CONSTRUCTION_MID_DRILLS,
+  CONSTRUCTION_SENIOR_DRILLS,
+  EDUCATION_EARLY_DRILLS,
+  EDUCATION_MID_DRILLS,
+  EDUCATION_SENIOR_DRILLS,
+  PUBLICSERVICE_EARLY_DRILLS,
+  PUBLICSERVICE_MID_DRILLS,
+  PUBLICSERVICE_SENIOR_DRILLS,
 ];
 
 // Number modules by their position so inserting/reordering never desyncs, and
