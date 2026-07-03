@@ -54,6 +54,10 @@ export default function PricingPage() {
   const [confirmUpgrade, setConfirmUpgrade] = useState<{
     tierId: TierId;
     tierName: string;
+    // Snapshot of the selection the preview was fetched for — Confirm charges
+    // exactly this, even if the pickers change behind the open dialog.
+    levels: Level[];
+    profession: Profession;
     newAnnual: number;
     amountDueNow: number | null; // exact prorated charge from Stripe
     loading: boolean;
@@ -189,6 +193,8 @@ export default function PricingPage() {
       setConfirmUpgrade({
         tierId,
         tierName,
+        levels,
+        profession,
         newAnnual: tierById(tierId).priceUsd * levels.length,
         amountDueNow: null,
         loading: true,
@@ -230,7 +236,11 @@ export default function PricingPage() {
     window.location.href = data.url as string;
   }
 
-  async function subscribe(tier: TierId, levels: Level[] = selectedLevels) {
+  async function subscribe(
+    tier: TierId,
+    levels: Level[] = selectedLevels,
+    chosenProfession: Profession = profession,
+  ) {
     if (levels.length === 0) {
       setError("Pick at least one career level first.");
       return;
@@ -238,7 +248,11 @@ export default function PricingPage() {
     setError(null);
     setBusy(tier);
     try {
-      await post("/api/billing/checkout", { tier, levels, profession });
+      await post("/api/billing/checkout", {
+        tier,
+        levels,
+        profession: chosenProfession,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't start checkout.");
       setBusy(null);
@@ -538,7 +552,13 @@ export default function PricingPage() {
           </p>
           <div className="mt-4 flex justify-center gap-3">
             <button
-              onClick={() => void subscribe(confirmUpgrade.tierId)}
+              onClick={() =>
+                void subscribe(
+                  confirmUpgrade.tierId,
+                  confirmUpgrade.levels,
+                  confirmUpgrade.profession,
+                )
+              }
               disabled={busy === confirmUpgrade.tierId || confirmUpgrade.loading}
               className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white shadow-sm disabled:opacity-60"
             >

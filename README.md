@@ -2,12 +2,13 @@
 
 An **articulation training course with AI coaching** for executive communication and
 clarity. You read short, practical lessons, then practice on realistic drills — and an
-AI coach (Claude) scores every response against a sharp rubric, rewrites it stronger,
+AI coach scores every response against a sharp rubric, rewrites it stronger,
 and tells you exactly what to fix.
 
 Built with Next.js (App Router) + TypeScript + Tailwind. Feedback is powered by your
-choice of a **free Google Gemini** key or an Anthropic Claude key — the provider is
-switchable with no code changes. Sign-up / login (so multiple people can share one link,
+choice of a **Google Gemini** key or an Anthropic Claude key — the provider is
+switchable with no code changes. (Gemini requires billing enabled on the Google Cloud
+project; its free tier is effectively unavailable for this workload.) Sign-up / login (so multiple people can share one link,
 each with their own progress) is handled by **Clerk**.
 
 > ## 🧭 Working branch for Claude Code sessions
@@ -24,14 +25,15 @@ each with their own progress) is handled by **Clerk**.
 
 ## Deploy in one click
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmmukto%2Farticulate&env=GEMINI_API_KEY%2CNEXT_PUBLIC_CLERK_PUBLISHABLE_KEY%2CCLERK_SECRET_KEY&envDescription=Keys%20for%20the%20free%20Gemini%20AI%20and%20Clerk%20sign-in%20%E2%80%94%20see%20the%20README&envLink=https%3A%2F%2Fgithub.com%2Fmmukto%2Farticulate%23getting-started&project-name=articulate&repository-name=articulate)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmmukto%2Farticulate&env=GEMINI_API_KEY%2CNEXT_PUBLIC_CLERK_PUBLISHABLE_KEY%2CCLERK_SECRET_KEY&envDescription=Keys%20for%20the%20Gemini%20AI%20coach%20and%20Clerk%20sign-in%20%E2%80%94%20see%20the%20README&envLink=https%3A%2F%2Fgithub.com%2Fmmukto%2Farticulate%23getting-started&project-name=articulate&repository-name=articulate)
 
 Clicking the button clones this repo into your own Vercel account and prompts you for
 three keys before the first build:
 
-- **`GEMINI_API_KEY`** — the free AI coach. Get one (no credit card) at
-  <https://aistudio.google.com/app/apikey>. (Prefer Claude? See
-  [AI provider](#ai-provider) and set `ANTHROPIC_API_KEY` instead.)
+- **`GEMINI_API_KEY`** — the AI coach. Get one at
+  <https://aistudio.google.com/app/apikey>, and enable billing on the Google Cloud
+  project — the free tier is effectively unavailable for this workload. (Prefer
+  Claude? See [AI provider](#ai-provider) and set `ANTHROPIC_API_KEY` instead.)
 - **`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`** and **`CLERK_SECRET_KEY`** — sign up / login.
   Create a free app at <https://dashboard.clerk.com> and copy both from its API Keys
   page. See [Accounts & sign-in](#accounts--sign-in).
@@ -117,12 +119,12 @@ Users sign up/in via a modal (email + whichever social logins you enable in Cler
 The coach is **provider-switchable** — it uses whichever key is configured, with no
 code changes:
 
-| If this env var is set      | Provider used        | Cost                 |
-| --------------------------- | -------------------- | -------------------- |
-| `GEMINI_API_KEY`            | Google Gemini        | **Free tier**        |
-| `ANTHROPIC_API_KEY`         | Anthropic Claude     | Paid                 |
+| If this env var is set      | Provider used        | Cost                     |
+| --------------------------- | -------------------- | ------------------------ |
+| `GEMINI_API_KEY`            | Google Gemini        | Paid (billing required)  |
+| `ANTHROPIC_API_KEY`         | Anthropic Claude     | Paid                     |
 
-If both are set, Gemini wins (free first). Force a choice with
+If both are set, Gemini wins (cheapest per token). Force a choice with
 `ARTICULATE_PROVIDER=gemini` or `ARTICULATE_PROVIDER=claude`. Override models with
 `GEMINI_MODEL` (default `gemini-2.5-flash-lite`) or `ANTHROPIC_MODEL` (default
 `claude-opus-4-8`).
@@ -158,7 +160,7 @@ Copy the example env file and fill it in:
 ```bash
 cp .env.example .env.local
 # AI coach (pick one):
-#   GEMINI_API_KEY=...        free   → https://aistudio.google.com/app/apikey
+#   GEMINI_API_KEY=...        → https://aistudio.google.com/app/apikey (billing required)
 #   ANTHROPIC_API_KEY=sk-...  paid   → https://console.anthropic.com/
 # Sign-in (Clerk — both required):
 #   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
@@ -220,10 +222,12 @@ lib/
   course.ts                  # Course content assembly (modules + merged drill banks)
   rubric.ts                  # Scoring dimensions (client-safe, no drill content)
   drills-extra/early/mid.ts  # Business-profession drill banks (25 per module per level)
-  drills-<prof>-<level>.ts   # Profession drill banks (engineer/doctor/lawyer/finance/
-                             #   sales/consultant/operator/student × early/mid/senior)
+  drills-<prof>-<level>.ts   # Profession drill banks × early/mid/senior (engineer,
+                             #   doctor, lawyer, finance, sales, consultant, operator,
+                             #   student, agriculture, service, industrial,
+                             #   construction, education, publicservice)
   levels.ts                  # Career levels (early / mid / senior) + helpers
-  professions.ts             # Professions (free preference) + helpers
+  professions.ts             # Professions (paid, like levels) + helpers
   tiers.ts                   # Subscription tiers, prices, per-module drill counts
   entitlements.ts            # Server-authoritative tier/level resolution + comp accounts
   limits.ts                  # Per-user annual AI-spend allowance (metering + gate)
@@ -234,7 +238,7 @@ lib/
   prompt.ts                  # Provider-agnostic prompts (written + spoken)
   feedback.ts                # Provider dispatch + score normalization
   providers/
-    gemini.ts                # Google Gemini backend (free; text + audio)
+    gemini.ts                # Google Gemini backend (text + audio)
     claude.ts                # Anthropic Claude backend (paid; text)
 ```
 

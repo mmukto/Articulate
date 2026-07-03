@@ -10,7 +10,14 @@ import {
   type Tier,
   type TierId,
 } from "./tiers";
-import { DEFAULT_LEVEL, LEVEL_IDS, parseLevels, readLevel, type Level } from "./levels";
+import {
+  DEFAULT_LEVEL,
+  LEVEL_IDS,
+  hasChosenLevel,
+  parseLevels,
+  readLevel,
+  type Level,
+} from "./levels";
 import {
   DEFAULT_PROFESSION,
   PROFESSION_IDS,
@@ -172,11 +179,16 @@ export function professionsForUser(user: ClerkUserLike): Profession[] {
  */
 export function aiBudgetUsdForUser(user: ClerkUserLike): number {
   const tier = tierForUser(user);
-  const units = isCompUser(user)
-    ? 1
-    : effectiveLevels(user.privateMetadata).length *
-      effectiveProfessions(user.privateMetadata).length;
-  const budget = tier.aiBudgetUsd * Math.max(1, units);
+  if (isCompUser(user)) return tier.aiBudgetUsd; // cap is bypassed anyway
+  const units =
+    effectiveLevels(user.privateMetadata).length *
+    effectiveProfessions(user.privateMetadata).length;
+  // A paid sub whose levels failed closed (units 0) gets the FREE budget, not a
+  // paid one — consistent with it granting no drill access until it self-heals.
+  const budget =
+    tier.id !== "free" && units === 0
+      ? FREE_TIER.aiBudgetUsd
+      : tier.aiBudgetUsd * Math.max(1, units);
   return Math.round(budget * 100) / 100;
 }
 
@@ -224,6 +236,26 @@ export interface Entitlements {
   comp: boolean;
 }
 
+/** The free sampler's first choice, recorded SERVER-SIDE (privateMetadata) the
+ *  first time a free user chooses a level/profession. The pickers' client-side
+ *  lock lives in client-writable unsafeMetadata, which a user could rewrite to
+ *  sample every profession × level — this record is what's actually enforced. */
+interface FreeChoice {
+  level?: Level;
+  profession?: Profession;
+}
+
+function readFreeChoice(privateMetadata: unknown): FreeChoice {
+  const fc = (
+    privateMetadata as
+      | { freeChoice?: { level?: string; profession?: string } }
+      | undefined
+  )?.freeChoice;
+  const level = LEVEL_IDS.find((l) => l === fc?.level);
+  const profession = PROFESSION_IDS.find((p) => p === fc?.profession);
+  return { level, profession };
+}
+
 /** Tier + purchased levels/professions + chosen level/profession + comp flag
  *  in one Clerk read. */
 export async function getUserEntitlements(userId: string): Promise<Entitlements> {
@@ -231,24 +263,63 @@ export async function getUserEntitlements(userId: string): Promise<Entitlements>
   const user = await client.users.getUser(userId);
   const comp = isCompUser(user);
   const professions = professionsForUser(user);
-  const pref = readProfession(user.unsafeMetadata);
+  const unsafe = user.unsafeMetadata;
+  const pref = readProfession(unsafe);
+  const prefLevel = readLevel(unsafe);
+  const isFree = !comp && professions.length === 0;
+  // Free sampler: enforce the server-recorded first choice, not the raw
+  // (client-writable) preference.
+  const freeChoice: FreeChoice = isFree ? readFreeChoice(user.privateMetadata) : {};
+  const level = isFree && freeChoice.level ? freeChoice.level : prefLevel;
   // Paid users practice within what they bought; a stale preference falls back
   // to a purchased profession instead of silently showing an unpaid bank.
   const profession =
     comp || professions.length === 0
-      ? pref
+      ? isFree && freeChoice.profession
+        ? freeChoice.profession
+        : pref
       : professions.includes(pref)
         ? pref
         : professions[professions.length - 1];
+
+  // Record a free account's first choice once, at choice time (the preference
+  // appears in unsafeMetadata when the picker is used). Best-effort: a failed
+  // write just retries on the next request.
+  if (isFree) {
+    const lockLevel = freeChoice.level == null && hasChosenLevel(unsafe);
+    const lockProfession =
+      freeChoice.profession == null && hasChosenProfession(unsafe);
+    if (lockLevel || lockProfession) {
+      const next: FreeChoice = {
+        ...(freeChoice.level ? { level: freeChoice.level } : {}),
+        ...(freeChoice.profession ? { profession: freeChoice.profession } : {}),
+        ...(lockLevel ? { level: prefLevel } : {}),
+        ...(lockProfession ? { profession: pref } : {}),
+      };
+      try {
+        await client.users.updateUserMetadata(userId, {
+          privateMetadata: {
+            ...((user.privateMetadata ?? {}) as Record<string, unknown>),
+            freeChoice: next,
+          },
+        });
+      } catch (err) {
+        console.error("[entitlements] failed to record free choice:", err);
+      }
+    }
+  }
+
   return {
     tier: tierForUser(user),
     levels: levelsForUser(user),
     professions,
-    level: readLevel(user.unsafeMetadata),
+    level,
     profession,
     professionLocked:
       !comp &&
-      (professions.length > 0 || hasChosenProfession(user.unsafeMetadata)),
+      (professions.length > 0 ||
+        freeChoice.profession != null ||
+        hasChosenProfession(unsafe)),
     comp,
   };
 }

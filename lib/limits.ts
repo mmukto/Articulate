@@ -23,7 +23,11 @@ import { markPracticed } from "./practiced";
 // (more drills, bigger allowance) is governed separately by subscription expiry
 // in lib/entitlements.ts; when a plan lapses the user reverts to the Free tier.
 
-const WINDOW_DAYS = Number(process.env.USER_ALLOWANCE_DAYS) || 365;
+// Guard against zero/negative/garbage values — a negative window would make
+// every request look "rolled over" and reset the meter to $0 each time.
+const envWindowDays = Number(process.env.USER_ALLOWANCE_DAYS);
+const WINDOW_DAYS =
+  Number.isFinite(envWindowDays) && envWindowDays > 0 ? envWindowDays : 365;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WINDOW_MS = WINDOW_DAYS * DAY_MS;
 
@@ -140,23 +144,36 @@ export async function recordSpend(
   practiced?: { moduleSlug: string; drillId: string },
 ): Promise<void> {
   const spendChanged = costUsd > 0;
-  const mark = practiced
+  // Pre-check against the gate-time snapshot so a no-op skips the Clerk calls.
+  const pre = practiced
     ? markPracticed(gate.existingMetadata, practiced.moduleSlug, practiced.drillId)
     : null;
-  const practicedChanged = !!mark?.changed;
-  if (!spendChanged && !practicedChanged) return;
+  if (!spendChanged && !pre?.changed) return;
 
   try {
     const client = await clerkClient();
+    // Re-read just before writing: the AI call between checkAccess and here
+    // takes seconds, and a Stripe webhook may have updated the subscription in
+    // the meantime — spreading the stale gate-time snapshot would revert it.
+    // (Also folds in any spend recorded by a concurrent request.)
+    const user = await client.users.getUser(userId);
+    const fresh = (user.privateMetadata ?? {}) as Record<string, unknown>;
+    const freshMeter = readMeter(fresh);
+    const mark = practiced
+      ? markPracticed(fresh, practiced.moduleSlug, practiced.drillId)
+      : null;
+    if (!spendChanged && !mark?.changed) return;
     const meter: Meter = {
-      windowStartedAt: gate.windowStartedAt,
-      spentUsd: round6(gate.spentUsd + (spendChanged ? costUsd : 0)),
+      windowStartedAt: freshMeter?.windowStartedAt ?? gate.windowStartedAt,
+      spentUsd: round6(
+        (freshMeter?.spentUsd ?? gate.spentUsd) + (spendChanged ? costUsd : 0),
+      ),
     };
     await client.users.updateUserMetadata(userId, {
       privateMetadata: {
-        ...gate.existingMetadata,
+        ...fresh,
         usage: meter,
-        ...(practicedChanged ? { practiced: mark!.value } : {}),
+        ...(mark?.changed ? { practiced: mark.value } : {}),
       },
     });
   } catch (err) {

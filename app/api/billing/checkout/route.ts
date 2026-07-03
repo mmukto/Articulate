@@ -6,6 +6,7 @@ import { tierById } from "@/lib/tiers";
 import { parseLevels } from "@/lib/levels";
 import { parseProfessions } from "@/lib/professions";
 import { readSubscription, setUserSubscription } from "@/lib/entitlements";
+import { applyStripeSubscription } from "@/lib/billing";
 
 export const runtime = "nodejs";
 
@@ -115,7 +116,7 @@ export async function POST(req: NextRequest) {
     try {
       const existing = await stripe.subscriptions.retrieve(sub!.stripeSubscriptionId!);
       const itemId = existing.items.data[0]?.id;
-      await stripe.subscriptions.update(sub!.stripeSubscriptionId!, {
+      const updated = await stripe.subscriptions.update(sub!.stripeSubscriptionId!, {
         items: [{ id: itemId, price: priceId, quantity }],
         // Invoice and charge the prorated upgrade now, not on the next cycle.
         proration_behavior: "always_invoice",
@@ -125,12 +126,15 @@ export async function POST(req: NextRequest) {
         metadata,
       });
       // Reflect immediately; the subscription.updated webhook also confirms.
+      // Take expiresAt from Stripe's response so a paid sub is never stored
+      // without one (stored-only value could be missing if a webhook was lost).
+      const periodEnd = updated.items.data[0]?.current_period_end;
       await setUserSubscription(userId, {
         tier: tier.id,
         levels,
         professions,
         cancelAtPeriodEnd: false,
-        expiresAt: sub!.expiresAt,
+        expiresAt: periodEnd ? periodEnd * 1000 : sub!.expiresAt,
         stripeCustomerId: sub!.stripeCustomerId,
         stripeSubscriptionId: sub!.stripeSubscriptionId,
       });
@@ -141,6 +145,37 @@ export async function POST(req: NextRequest) {
         { error: "Couldn't update your subscription. Please contact support." },
         { status: 500 },
       );
+    }
+  }
+
+  // Clerk metadata can be stale (e.g. a missed renewal webhook makes hasActive
+  // false while the subscription is still live in Stripe). Before opening a NEW
+  // checkout, ask Stripe directly — stacking a second subscription would
+  // double-charge the user. On a hit, re-sync the plan and refuse the session.
+  if (sub?.stripeCustomerId) {
+    try {
+      const existing = await stripe.subscriptions.list({
+        customer: sub.stripeCustomerId,
+        status: "all",
+        limit: 10,
+      });
+      const live = existing.data.find(
+        (s) => s.status === "active" || s.status === "trialing" || s.status === "past_due",
+      );
+      if (live) {
+        await applyStripeSubscription(userId, live, sub.stripeCustomerId);
+        return NextResponse.json(
+          {
+            error:
+              "You already have a subscription — your plan has been re-synced. Reload the page, then upgrade or cancel from here.",
+          },
+          { status: 409 },
+        );
+      }
+    } catch (err) {
+      // Best-effort guard: if Stripe can't answer, proceed — Checkout itself
+      // will fail loudly if the account is unreachable.
+      console.error("[checkout] duplicate-subscription check failed:", err);
     }
   }
 

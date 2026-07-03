@@ -50,11 +50,14 @@ in `lib/site.ts` (`SITE_URL`, default `https://iarticulate.ca`).
   profession(s)* (spread evenly = 3/6/12/25 per module, via `drillsPerModule`).
   **Professions are paid, like levels**: Stripe quantity = levels × professions (the
   pricing page currently sells ONE profession per subscription); the plan records
-  `professions` in metadata and swapping a profession or level requires cancel +
-  re-subscribe (in-place upgrades may only ADD levels / raise the tier within the
-  owned profession). Free is a sampler: 1 drill per module in the **first 3 modules
-  only** (`FREE_MODULE_LIMIT`), locked to the user's chosen level AND chosen
-  profession (both lock on first choice). Comp accounts (`COMP_USER_EMAILS` — the
+  `professions` in metadata and swapping or dropping a profession or level requires
+  cancel + re-subscribe (in-place upgrades may only ADD levels/professions or raise
+  the tier — the new plan must be a superset of the owned one). Free is a sampler:
+  1 drill per module in the **first 3 modules only** (`FREE_MODULE_LIMIT`), locked
+  to the user's chosen level AND chosen profession — both lock on first choice, and
+  the lock is enforced server-side: the first choice is recorded in Clerk
+  `privateMetadata.freeChoice` by `getUserEntitlements` (client-writable
+  unsafeMetadata alone can't unlock other banks). Comp accounts (`COMP_USER_EMAILS` — the
   owners) bypass all of it. Legacy paid subs with no recorded professions resolve to
   `["business"]` (the library they bought), NOT fail-closed like levels. The single
   gate implementation is `drillAccess` in `lib/entitlements.ts`, shared by the

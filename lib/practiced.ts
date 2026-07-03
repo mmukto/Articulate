@@ -1,9 +1,9 @@
 import { DRILL_INDEX } from "./course";
 
-// Server-authoritative record of which drills a user has practiced, used for the
-// usage-based cancellation refund. It lives in Clerk `privateMetadata.practiced`
-// (server-only, so users can't tamper with it — unlike client progress, which is
-// in unsafeMetadata and could be cleared to game the refund).
+// Server-authoritative record of which drills a user has practiced. It lives in
+// Clerk `privateMetadata.practiced` (server-only, so users can't tamper with it —
+// unlike client progress in unsafeMetadata). Plans are non-refundable; this
+// exists as a trustworthy usage record independent of client-writable progress.
 //
 // Storage is a bitset (one bit per drill, indexed by DRILL_INDEX) encoded as
 // base64 — ~94 bytes for 750 drills, far under any metadata size limit. We only

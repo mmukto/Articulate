@@ -5,8 +5,9 @@ import {
 } from "@google/generative-ai";
 import { DIMENSIONS, DELIVERY_DIMENSIONS } from "../course";
 
-// Gemini provider (free tier). Structured output via responseSchema +
-// responseMimeType: "application/json", which returns JSON we parse.
+// Gemini provider (billing must be enabled on the Google Cloud project — the
+// free tier is effectively unavailable for this workload). Structured output
+// via responseSchema + responseMimeType: "application/json", which we parse.
 //
 // Resilience: Google sheds load on the cheap models with transient 503 "high
 // demand" errors that usually clear in seconds. Every call retries the primary

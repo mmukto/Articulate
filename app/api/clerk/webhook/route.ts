@@ -31,13 +31,26 @@ export async function POST(req: NextRequest) {
         query: `metadata['userId']:'${userId}'`,
         limit: 50,
       });
+      let failed = 0;
       for (const sub of found.data) {
         if (sub.status === "canceled" || sub.status === "incomplete_expired") continue;
         try {
           await stripe.subscriptions.cancel(sub.id);
         } catch (e) {
+          failed++;
           console.error("[clerk] failed to cancel subscription", sub.id, e);
         }
+      }
+      if (failed > 0) {
+        // Non-2xx makes Clerk redeliver the event, so a transient Stripe error
+        // gets retried instead of leaving an orphaned subscription that keeps
+        // charging a deleted account. (Residual gap: subscriptions.search is
+        // eventually consistent, so a sub bought seconds before deletion could
+        // be missed — nothing to retry on since search returns empty.)
+        return NextResponse.json(
+          { error: `Failed to cancel ${failed} subscription(s); Clerk will retry.` },
+          { status: 500 },
+        );
       }
     }
   } catch (err) {

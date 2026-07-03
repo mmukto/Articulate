@@ -2,10 +2,12 @@
 // from client components and server code alike, mirroring lib/levels.ts.
 //
 // Drills are tagged with a profession so scenarios match the learner's actual
-// work; the AI coach is also calibrated to it (see `coachNote`). Unlike career
-// levels, professions are NOT priced — the profession is a free preference the
-// user can switch anytime (stored in Clerk unsafeMetadata, like the level).
-// "business" is the default and maps to the original general drill library.
+// work; the AI coach is also calibrated to it (see `coachNote`). Professions
+// are PAID, like career levels: Stripe quantity = levels × professions, and
+// the practice profession (a preference in Clerk unsafeMetadata) is clamped
+// server-side to the plan's purchased professions in lib/entitlements.ts —
+// free accounts lock to their first choice. "business" is the default and
+// maps to the original general drill library.
 
 import { LEVEL_MAP, type Level } from "./levels";
 

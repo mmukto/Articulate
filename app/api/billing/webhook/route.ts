@@ -40,9 +40,15 @@ export async function POST(req: NextRequest) {
       }
       case "customer.subscription.created":
       case "customer.subscription.updated": {
-        const sub = event.data.object as Stripe.Subscription;
-        const userId = sub.metadata?.userId;
-        if (userId) await applyStripeSubscription(userId, sub, sub.customer as string);
+        const evtSub = event.data.object as Stripe.Subscription;
+        const userId = evtSub.metadata?.userId;
+        if (userId) {
+          // Stripe doesn't guarantee event ordering: a delayed "updated" event
+          // (status: active) can arrive AFTER "deleted" and must not resurrect
+          // access. Apply the subscription's current state, not the payload's.
+          const sub = await stripe.subscriptions.retrieve(evtSub.id);
+          await applyStripeSubscription(userId, sub, sub.customer as string);
+        }
         break;
       }
       case "customer.subscription.deleted": {
