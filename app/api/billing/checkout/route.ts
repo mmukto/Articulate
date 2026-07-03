@@ -113,6 +113,19 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
+    // Bill at the same proration instant the confirm dialog previewed
+    // (/api/billing/preview returns it), so the charge matches the number the
+    // user approved to the cent. Clamp to a recent past window — a stale or
+    // crafted timestamp can't move the billing date meaningfully.
+    const nowSec = Math.floor(Date.now() / 1000);
+    const rawProrationDate = (body as { prorationDate?: unknown })?.prorationDate;
+    const prorationDate =
+      typeof rawProrationDate === "number" &&
+      Number.isFinite(rawProrationDate) &&
+      Math.floor(rawProrationDate) <= nowSec &&
+      nowSec - Math.floor(rawProrationDate) <= 30 * 60
+        ? Math.floor(rawProrationDate)
+        : nowSec;
     try {
       const existing = await stripe.subscriptions.retrieve(sub!.stripeSubscriptionId!);
       const itemId = existing.items.data[0]?.id;
@@ -120,6 +133,7 @@ export async function POST(req: NextRequest) {
         items: [{ id: itemId, price: priceId, quantity }],
         // Invoice and charge the prorated upgrade now, not on the next cycle.
         proration_behavior: "always_invoice",
+        proration_date: prorationDate,
         // Upgrading implies they want to keep the plan — clear any scheduled
         // cancellation so Stripe and our metadata don't disagree.
         cancel_at_period_end: false,

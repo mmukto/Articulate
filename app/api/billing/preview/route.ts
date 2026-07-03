@@ -29,7 +29,11 @@ export async function POST(req: NextRequest) {
   const tier = tierById((body as { tier?: string })?.tier);
   const priceId = priceIdForTier(tier.id);
   const levels = parseLevels((body as { levels?: unknown })?.levels);
-  const professions = parseProfessions((body as { profession?: unknown })?.profession);
+  // Accept both shapes, mirroring checkout, so the two routes can't drift.
+  const professions = parseProfessions(
+    (body as { profession?: unknown })?.profession ??
+      (body as { professions?: unknown })?.professions,
+  );
   if (tier.id === "free" || !priceId || levels.length === 0) {
     return NextResponse.json({ amountDueNow: null }, { status: 400 });
   }
@@ -72,7 +76,10 @@ export async function POST(req: NextRequest) {
       .filter((l) => l.period?.start === prorationDate)
       .reduce((sum, l) => sum + l.amount, 0);
     const amountDueNow = Math.max(0, Math.round(cents)) / 100;
-    return NextResponse.json({ amountDueNow });
+    // Return the proration instant too: the confirm flow passes it back to
+    // /checkout, which bills at the SAME instant — so the charge matches this
+    // preview to the cent instead of re-prorating seconds/minutes later.
+    return NextResponse.json({ amountDueNow, prorationDate });
   } catch (err) {
     console.error("[billing/preview] failed:", err);
     return NextResponse.json({ amountDueNow: null });

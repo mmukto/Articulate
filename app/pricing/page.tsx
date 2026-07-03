@@ -60,6 +60,9 @@ export default function PricingPage() {
     profession: Profession;
     newAnnual: number;
     amountDueNow: number | null; // exact prorated charge from Stripe
+    // Proration instant the preview was computed at — passed back to checkout
+    // so the actual charge matches amountDueNow to the cent.
+    prorationDate: number | null;
     loading: boolean;
   } | null>(null);
 
@@ -197,6 +200,7 @@ export default function PricingPage() {
         profession,
         newAnnual: tierById(tierId).priceUsd * levels.length,
         amountDueNow: null,
+        prorationDate: null,
         loading: true,
       });
       // Fetch the exact prorated charge to show before they confirm.
@@ -212,6 +216,8 @@ export default function PricingPage() {
               ? {
                   ...prev,
                   amountDueNow: typeof d?.amountDueNow === "number" ? d.amountDueNow : null,
+                  prorationDate:
+                    typeof d?.prorationDate === "number" ? d.prorationDate : null,
                   loading: false,
                 }
               : prev,
@@ -240,6 +246,7 @@ export default function PricingPage() {
     tier: TierId,
     levels: Level[] = selectedLevels,
     chosenProfession: Profession = profession,
+    prorationDate?: number,
   ) {
     if (levels.length === 0) {
       setError("Pick at least one career level first.");
@@ -252,6 +259,7 @@ export default function PricingPage() {
         tier,
         levels,
         profession: chosenProfession,
+        ...(prorationDate != null ? { prorationDate } : {}),
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't start checkout.");
@@ -557,6 +565,7 @@ export default function PricingPage() {
                   confirmUpgrade.tierId,
                   confirmUpgrade.levels,
                   confirmUpgrade.profession,
+                  confirmUpgrade.prorationDate ?? undefined,
                 )
               }
               disabled={busy === confirmUpgrade.tierId || confirmUpgrade.loading}
